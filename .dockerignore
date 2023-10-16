@@ -1,0 +1,6 @@
+/.devenv/
+/.direnv/
+/.github/
+/bin/
+/build/
+/Dockerfile
