@@ -16,10 +16,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"time"
 
@@ -51,13 +53,14 @@ func main() {
 		// Handle GCP provider
 
 	default:
-		logger.Error("Invalid provider specified.", slog.String("provider name", providerName))
+		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
 
 		os.Exit(1)
 	}
 
 	daemonMode := cast.ToBool(os.Getenv("VAULT_ENV_DAEMON"))
 	delayExec := cast.ToDuration(os.Getenv("VAULT_ENV_DELAY"))
+	sigs := make(chan os.Signal, 1)
 
 	if len(os.Args) == 1 {
 		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
@@ -84,13 +87,62 @@ func main() {
 	var envs []string
 	envs, err = provider.RetrieveSecrets(os.Environ())
 	if err != nil {
-		logger.Error("could not retrieve secrets from the provider.")
+		logger.Error("could not retrieve secrets from the provider.", err)
 
 		os.Exit(1)
 	}
 
 	if daemonMode {
 		logger.Info("in daemon mode...")
+		cmd := exec.Command(binary, entrypointCmd[1:]...)
+		cmd.Env = append(os.Environ(), envs...)
+		cmd.Stdin = os.Stdin
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+
+		signal.Notify(sigs)
+
+		err = cmd.Start()
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to start process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
+
+			os.Exit(1)
+		}
+
+		go func() {
+			for sig := range sigs {
+				// We don't want to signal a non-running process.
+				if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+					break
+				}
+
+				err := cmd.Process.Signal(sig)
+				if err != nil {
+					logger.Warn(fmt.Errorf("failed to signal process: %w", err).Error(), slog.String("signal", sig.String()))
+				} else {
+					logger.Info("received signal", slog.String("signal", sig.String()))
+				}
+			}
+		}()
+
+		err = cmd.Wait()
+
+		close(sigs)
+
+		if err != nil {
+			exitCode := -1
+			// try to get the original exit code if possible
+			var exitError *exec.ExitError
+			if errors.As(err, &exitError) {
+				exitCode = exitError.ExitCode()
+			}
+
+			logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
+
+			os.Exit(exitCode)
+		}
+
+		os.Exit(cmd.ProcessState.ExitCode())
 	} else { //nolint:revive
 		err = syscall.Exec(binary, entrypointCmd, envs)
 		if err != nil {
