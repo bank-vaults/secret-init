@@ -25,10 +25,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cast"
+
 	"github.com/bank-vaults/secret-init/logger"
 	"github.com/bank-vaults/secret-init/providers"
 	"github.com/bank-vaults/secret-init/providers/vault"
-	"github.com/spf13/cast"
 )
 
 func main() {
