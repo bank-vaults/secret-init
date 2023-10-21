@@ -51,9 +51,14 @@ func main() {
 		provider = vault.NewVaultProvider()
 	case "gcp":
 		// Handle GCP provider
-
 	default:
 		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
+
+		os.Exit(1)
+	}
+
+	if len(os.Args) == 1 {
+		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
 
 		os.Exit(1)
 	}
@@ -61,12 +66,6 @@ func main() {
 	daemonMode := cast.ToBool(os.Getenv("VAULT_ENV_DAEMON"))
 	delayExec := cast.ToDuration(os.Getenv("VAULT_ENV_DELAY"))
 	sigs := make(chan os.Signal, 1)
-
-	if len(os.Args) == 1 {
-		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
-
-		os.Exit(1)
-	}
 
 	entrypointCmd := os.Args[1:]
 
@@ -77,13 +76,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if delayExec > 0 {
-		logger.Info(fmt.Sprintf("sleeping for %s...", delayExec))
-		time.Sleep(delayExec)
-	}
-
-	logger.Info("spawning process", slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
-
 	var envs []string
 	envs, err = provider.RetrieveSecrets(os.Environ())
 	if err != nil {
@@ -91,6 +83,13 @@ func main() {
 
 		os.Exit(1)
 	}
+
+	if delayExec > 0 {
+		logger.Info(fmt.Sprintf("sleeping for %s...", delayExec))
+		time.Sleep(delayExec)
+	}
+
+	logger.Info("spawning process", slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
 
 	if daemonMode {
 		logger.Info("in daemon mode...")
