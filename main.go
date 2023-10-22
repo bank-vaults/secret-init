@@ -32,6 +32,12 @@ import (
 	"github.com/bank-vaults/secret-init/providers/vault"
 )
 
+var providersMap = map[string]providers.Provider{
+	// "aws": aws.NewAWSProvider(),
+	// "gcp": gcp.NewGCPProvider(),
+	"vault": vault.NewVaultProvider(),
+}
+
 func main() {
 	logger := logger.SetupSlog()
 
@@ -43,16 +49,8 @@ func main() {
 		os.Args = append(os.Args[:1], os.Args[3:]...)
 	}
 
-	var provider providers.Provider
-	switch providerName {
-	case "aws":
-		// Handle AWS provider
-	case "vault":
-		// Handle Vault provider
-		provider = vault.NewVaultProvider()
-	case "gcp":
-		// Handle GCP provider
-	default:
+	provider, found := providersMap[providerName]
+	if !found {
 		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
 
 		os.Exit(1)
