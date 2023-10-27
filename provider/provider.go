@@ -1,4 +1,3 @@
-// Copyright © 2018 Banzai Cloud
 // Copyright © 2023 Bank-Vaults Maintainers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package providers
+package provider
 
+import "context"
+
+// Provider is an interface for securely retrieving secrets based on environment variables.
 type Provider interface {
-	RetrieveSecrets(envVars []string) ([]string, error)
-
-	//Future implementation.
-	//RenewSecret()
+	LoadSecrets(ctx context.Context, paths []string) ([]string, error)
 }
