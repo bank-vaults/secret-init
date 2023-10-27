@@ -195,7 +195,7 @@ func main() {
 		}
 
 		os.Exit(cmd.ProcessState.ExitCode())
-	} //nolint:revive
+	}
 	err = syscall.Exec(binary, entrypointCmd, envs)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
