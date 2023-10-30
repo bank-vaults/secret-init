@@ -95,19 +95,7 @@ func main() {
 	}
 
 	// TODO: enable providers
-	providers := map[string]provider.Provider{
-		// 	 "aws": aws.NewAWSProvider(),
-		// 	 "gcp": gcp.NewGCPProvider(),
-		// 	"vault": vault.NewVaultProvider(),
-	}
-
-	var providerName string
-	provider, found := providers[providerName]
-	if !found {
-		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
-
-		os.Exit(1)
-	}
+	var provider provider.Provider
 
 	if len(os.Args) == 1 {
 		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
