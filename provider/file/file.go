@@ -31,5 +31,5 @@ func NewFileProvider(secretsFilePath string) provider.Provider {
 
 func (provider *Provider) LoadSecrets(_ context.Context, paths []string) ([]string, error) {
 
-	return make([]string, 2), nil
+	return paths, nil
 }
