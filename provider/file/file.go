@@ -20,16 +20,16 @@ import (
 	"github.com/bank-vaults/secret-init/provider"
 )
 
-type FileProvider struct {
+type Provider struct {
 	SecretsFilePath string
 }
 
 func NewFileProvider(secretsFilePath string) provider.Provider {
 
-	return &FileProvider{SecretsFilePath: secretsFilePath}
+	return &Provider{SecretsFilePath: secretsFilePath}
 }
 
-func (provider *FileProvider) LoadSecrets(ctx context.Context, paths []string) ([]string, error) {
+func (provider *Provider) LoadSecrets(_ context.Context, paths []string) ([]string, error) {
 
 	return make([]string, 2), nil
 }
