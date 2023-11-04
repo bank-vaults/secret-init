@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/provider/file"
 )
 
 func main() {
@@ -95,7 +96,17 @@ func main() {
 	}
 
 	// TODO: enable providers
-	var provider provider.Provider
+	providers := map[string]provider.Provider{
+		"file": file.NewFileProvider(os.Getenv("SECRETS_FILE_PATH")),
+	}
+
+	providerName := os.Getenv("PROVIDER")
+	provider, found := providers[providerName]
+	if !found {
+		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
+
+		os.Exit(1)
+	}
 
 	if len(os.Args) == 1 {
 		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
