@@ -48,13 +48,13 @@ var sanitizeEnv = []string{
 	"VAULT_ENV_PASSTHROUGH",
 }
 
-func (e *sanitizedEnviron) append(name string, value string) {
-	for _, env := range sanitizeEnv {
-		if name == env {
-			e.env = append(e.env, fmt.Sprintf("%s=%s", name, value))
-		}
-	}
-}
+// func (e *sanitizedEnviron) append(name string, value string) {
+// 	for _, env := range sanitizeEnv {
+// 		if name == env {
+// 			e.env = append(e.env, fmt.Sprintf("%s=%s", name, value))
+// 		}
+// 	}
+// }
 
 func main() {
 	var logger *slog.Logger
