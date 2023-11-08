@@ -29,7 +29,6 @@ func NewFileProvider(secretsFilePath string) provider.Provider {
 	return &Provider{SecretsFilePath: secretsFilePath}
 }
 
-func (provider *Provider) LoadSecrets(_ context.Context, paths []string) ([]string, error) {
-
-	return paths, nil
+func (provider *Provider) LoadSecrets(_ context.Context, paths *map[string]string) ([]string, error) {
+	return make([]string, 0), nil
 }
