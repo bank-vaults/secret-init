@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +33,28 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/provider/file"
 )
+
+type sanitizedEnviron struct {
+	env []string
+}
+
+var sanitizeEnv = []string{
+	"VAULT_JSON_LOG",
+	"VAULT_LOG_LEVEL",
+	"VAULT_ENV_DAEMON",
+	"VAULT_ENV_DELAY",
+	"VAULT_ENV_PASSTHROUGH",
+}
+
+// func (e *sanitizedEnviron) append(name string, value string) {
+// 	for _, env := range sanitizeEnv {
+// 		if name == env {
+// 			e.env = append(e.env, fmt.Sprintf("%s=%s", name, value))
+// 		}
+// 	}
+// }
 
 func main() {
 	var logger *slog.Logger
@@ -94,8 +116,17 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	// TODO: enable providers
-	var provider provider.Provider
+	providers := map[string]provider.Provider{
+		"file": file.NewFileProvider(os.Getenv("SECRETS_FILE_PATH")),
+	}
+
+	providerName := os.Getenv("PROVIDER")
+	provider, found := providers[providerName]
+	if !found {
+		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
+
+		os.Exit(1)
+	}
 
 	if len(os.Args) == 1 {
 		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
@@ -115,13 +146,41 @@ func main() {
 		os.Exit(1)
 	}
 
+	passthroughEnvVars := strings.Split(os.Getenv("VAULT_ENV_PASSTHROUGH"), ",")
+
+	// do not sanitize env vars specified in VAULT_ENV_PASSTHROUGH
+	for _, envVar := range passthroughEnvVars {
+		if trimmed := strings.TrimSpace(envVar); trimmed != "" {
+			for i, sanEnv := range sanitizeEnv {
+				if trimmed == sanEnv {
+					sanitizeEnv[i] = sanitizeEnv[len(sanitizeEnv)-1]
+					sanitizeEnv[len(sanitizeEnv)-1] = ""
+					sanitizeEnv = sanitizeEnv[:len(sanitizeEnv)-1]
+				}
+			}
+		}
+	}
+
+	environ := make(map[string]string, len(os.Environ()))
+	sanitized := sanitizedEnviron{}
+
+	for _, env := range os.Environ() {
+		split := strings.SplitN(env, "=", 2)
+		name := split[0]
+		value := split[1]
+		environ[name] = value
+	}
+
 	ctx := context.Background()
-	envs, err := provider.LoadSecrets(ctx, os.Environ())
+	envs, err := provider.LoadSecrets(ctx, &environ)
 	if err != nil {
 		logger.Error("could not retrieve secrets from the provider.", err)
 
 		os.Exit(1)
 	}
+
+	// passthroughEnvs + loaded secrets
+	sanitized.env = append(sanitized.env, envs...)
 
 	sigs := make(chan os.Signal, 1)
 
@@ -135,7 +194,7 @@ func main() {
 	if daemonMode {
 		logger.Info("in daemon mode...")
 		cmd := exec.Command(binary, entrypointCmd[1:]...)
-		cmd.Env = append(os.Environ(), envs...)
+		cmd.Env = append(os.Environ(), sanitized.env...)
 		cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
@@ -184,7 +243,7 @@ func main() {
 
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
-	err = syscall.Exec(binary, entrypointCmd, envs)
+	err = syscall.Exec(binary, entrypointCmd, sanitized.env)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
 

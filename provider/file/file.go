@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package provider
+package file
 
-import "context"
+import (
+	"context"
 
-// Provider is an interface for securely loading secrets based on environment variables.
-type Provider interface {
-	LoadSecrets(ctx context.Context, paths *map[string]string) ([]string, error)
+	"github.com/bank-vaults/secret-init/provider"
+)
+
+type Provider struct {
+	SecretsFilePath string
+}
+
+func NewFileProvider(secretsFilePath string) provider.Provider {
+
+	return &Provider{SecretsFilePath: secretsFilePath}
+}
+
+func (provider *Provider) LoadSecrets(_ context.Context, _ *map[string]string) ([]string, error) {
+
+	return make([]string, 0), nil
 }
