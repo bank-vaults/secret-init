@@ -103,6 +103,8 @@ func main() {
 		newProvider, err := file.NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
 		if err != nil {
 			logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
+
+			os.Exit(1)
 		}
 		provider = newProvider
 	default:
