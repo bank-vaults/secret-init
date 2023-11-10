@@ -16,20 +16,53 @@ package file
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
 )
 
 type Provider struct {
 	SecretsFilePath string
+	SecretData      []byte
 }
 
-func NewFileProvider(secretsFilePath string) provider.Provider {
+func NewFileProvider(secretsFilePath string) (provider.Provider, error) {
+	data, err := os.ReadFile(secretsFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from file: %w", err)
+	}
 
-	return &Provider{SecretsFilePath: secretsFilePath}
+	return &Provider{SecretsFilePath: secretsFilePath, SecretData: data}, nil
 }
 
-func (provider *Provider) LoadSecrets(_ context.Context, _ *map[string]string) ([]string, error) {
+func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string) ([]string, error) {
 
-	return make([]string, 0), nil
+	//envs that has a value with "file:" prefix needs to be loaded
+	var secrets []string
+	for key, value := range envs {
+		if strings.HasPrefix(value, "file:") {
+			secret, err := provider.getSecretFromFile(key)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load secret: %w", err)
+			}
+			secrets = append(secrets, secret)
+		}
+	}
+
+	return secrets, nil
+}
+
+func (provider *Provider) getSecretFromFile(key string) (string, error) {
+	lines := strings.Split(string(provider.SecretData), "\n")
+	for _, line := range lines {
+		split := strings.SplitN(line, "=", 2)
+
+		if split[0] == key {
+			return split[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("key: '%s' not found in file", key)
 }
