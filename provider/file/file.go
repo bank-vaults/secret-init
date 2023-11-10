@@ -47,7 +47,7 @@ func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string)
 			if err != nil {
 				return nil, fmt.Errorf("failed to load secret: %w", err)
 			}
-			secrets = append(secrets, secret)
+			secrets = append(secrets, fmt.Sprintf("%s=%s", key, secret))
 		}
 	}
 
