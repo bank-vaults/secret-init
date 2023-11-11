@@ -38,8 +38,7 @@ func NewFileProvider(secretsFilePath string) (provider.Provider, error) {
 }
 
 func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string) ([]string, error) {
-
-	//envs that has a value with "file:" prefix needs to be loaded
+	// envs that has a "file:" prefix needs to be loaded
 	var secrets []string
 	for key, value := range envs {
 		if strings.HasPrefix(value, "file:") {
@@ -58,7 +57,6 @@ func (provider *Provider) getSecretFromFile(key string) (string, error) {
 	lines := strings.Split(string(provider.SecretData), "\n")
 	for _, line := range lines {
 		split := strings.SplitN(line, "=", 2)
-
 		if split[0] == key {
 			return split[1], nil
 		}

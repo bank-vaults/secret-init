@@ -132,7 +132,6 @@ func main() {
 	}
 
 	environ := make(map[string]string, len(os.Environ()))
-
 	for _, env := range os.Environ() {
 		split := strings.SplitN(env, "=", 2)
 		name := split[0]
