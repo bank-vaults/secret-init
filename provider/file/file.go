@@ -20,31 +20,39 @@ import (
 	"os"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/bank-vaults/secret-init/provider"
 )
 
+const ProviderName = "file"
+
 type Provider struct {
-	SecretsFilePath string
-	SecretData      []byte
+	secretsFilePath string
 }
 
 func NewFileProvider(secretsFilePath string) (provider.Provider, error) {
-	data, err := os.ReadFile(secretsFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read from file: %w", err)
-	}
 
-	return &Provider{SecretsFilePath: secretsFilePath, SecretData: data}, nil
+	return &Provider{secretsFilePath: secretsFilePath}, nil
 }
 
 func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string) ([]string, error) {
-	// envs that has a "file:" prefix needs to be loaded
+	// extract secrets from the file to a map
+	secretsMap, err := provider.getSecretsFromFile()
+	if err != nil {
+
+		return nil, fmt.Errorf("failed to load secrets: %w", err)
+	}
+
 	var secrets []string
 	for key, value := range envs {
 		if strings.HasPrefix(value, "file:") {
-			secret, err := provider.getSecretFromFile(key)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load secret: %w", err)
+			// Check if the requested secret is in the loaded secret map
+			value = strings.TrimPrefix(value, "file:")
+			secret, ok := secretsMap[value]
+			if !ok {
+
+				return nil, fmt.Errorf("secret %s not found", key)
 			}
 			secrets = append(secrets, fmt.Sprintf("%s=%s", key, secret))
 		}
@@ -53,14 +61,19 @@ func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string)
 	return secrets, nil
 }
 
-func (provider *Provider) getSecretFromFile(key string) (string, error) {
-	lines := strings.Split(string(provider.SecretData), "\n")
-	for _, line := range lines {
-		split := strings.SplitN(line, "=", 2)
-		if split[0] == key {
-			return split[1], nil
-		}
+func (provider *Provider) getSecretsFromFile() (map[string]string, error) {
+	data, err := os.ReadFile(provider.secretsFilePath)
+	if err != nil {
+
+		return nil, fmt.Errorf("failed to read secrets file: %w", err)
 	}
 
-	return "", fmt.Errorf("key: '%s' not found in file", key)
+	secretsMap := make(map[string]string)
+	err = yaml.Unmarshal(data, &secretsMap)
+	if err != nil {
+
+		return nil, fmt.Errorf("failed to unmarshal YAML: %w", err)
+	}
+
+	return secretsMap, nil
 }

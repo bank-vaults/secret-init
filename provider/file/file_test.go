@@ -15,13 +15,10 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/bank-vaults/secret-init/provider"
 )
 
 func TestMain(m *testing.M) {
@@ -39,32 +36,17 @@ func TestNewFileProvider(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// create new environment variables
-	// for file-path and secrets to get
 	setupEnvs(t, tmpfile)
 
-	var fileProvider provider.Provider
-	providerName := os.Getenv("PROVIDER")
-	switch providerName {
-	case "file":
-		newFileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
-		fileProvider = newFileProvider
-		if err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatalf("invalid provider specified: %s", providerName)
-	}
-
-	expectedSecretData, err := os.ReadFile(tmpfile.Name())
+	fileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// access the provider implementation to get secretdata
-	// then check if file provider is correctly created
-	// and file-path is read
-	if fileProvider, ok := fileProvider.(*Provider); !ok || !bytes.Equal(expectedSecretData, fileProvider.SecretData) {
-		t.Fatal("failed to create file provider")
+	// check if file provider is correctly created
+	_, ok := fileProvider.(*Provider)
+	if !ok {
+		t.Fatal("provider is not of type file")
 	}
 }
 
@@ -77,17 +59,9 @@ func TestFileLoadSecrets(t *testing.T) {
 	// for file-path and secrets to get
 	setupEnvs(t, tmpfile)
 
-	var fileProvider provider.Provider
-	providerName := os.Getenv("PROVIDER")
-	switch providerName {
-	case "file":
-		newFileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
-		fileProvider = newFileProvider
-		if err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatalf("invalid provider specified: %s", providerName)
+	fileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	environ := make(map[string]string, len(os.Environ()))
@@ -141,8 +115,8 @@ func areEqual(t *testing.T, actual, expected []string) {
 }
 
 func createTempFileWithContent(t *testing.T) *os.File {
-	content := []byte("MYSQL_PASSWORD=3xtr3ms3cr3t\nAWS_SECRET_ACCESS_KEY=s3cr3t\nAWS_ACCESS_KEY_ID=secretId\n")
-	tmpfile, err := os.CreateTemp("", "secrets-*.txt")
+	content := []byte("sqlPassword: 3xtr3ms3cr3t\nawsSecretAccessKey: s3cr3t\nawsAccessKeyId: secretId\n")
+	tmpfile, err := os.CreateTemp("", "secrets-*.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,15 +144,15 @@ func setupEnvs(t *testing.T, tmpfile *os.File) {
 		t.Fatal(err)
 	}
 
-	err = os.Setenv("MYSQL_PASSWORD", "file:secret")
+	err = os.Setenv("MYSQL_PASSWORD", "file:sqlPassword")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "file:secret")
+	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "file:awsSecretAccessKey")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = os.Setenv("AWS_ACCESS_KEY_ID", "file:secret")
+	err = os.Setenv("AWS_ACCESS_KEY_ID", "file:awsAccessKeyId")
 	if err != nil {
 		t.Fatal(err)
 	}

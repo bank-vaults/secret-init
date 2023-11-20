@@ -36,6 +36,22 @@ import (
 	"github.com/bank-vaults/secret-init/provider/file"
 )
 
+func NewProvider(providerName string) (provider.Provider, error) {
+	switch providerName {
+	case file.ProviderName:
+		provider, err := file.NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
+		if err != nil {
+
+			return nil, err
+		}
+
+		return provider, nil
+	default:
+
+		return nil, errors.New("invalid provider specified")
+	}
+}
+
 func main() {
 	var logger *slog.Logger
 	{
@@ -96,19 +112,9 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	var provider provider.Provider
-	providerName := os.Getenv("PROVIDER")
-	switch providerName {
-	case "file":
-		newProvider, err := file.NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
-		if err != nil {
-			logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
-
-			os.Exit(1)
-		}
-		provider = newProvider
-	default:
-		logger.Error("invalid provider specified.", slog.String("provider name", providerName))
+	provider, err := NewProvider(os.Getenv("PROVIDER"))
+	if err != nil {
+		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 
 		os.Exit(1)
 	}
@@ -142,7 +148,7 @@ func main() {
 	ctx := context.Background()
 	envs, err := provider.LoadSecrets(ctx, environ)
 	if err != nil {
-		logger.Error(fmt.Errorf("failed to load secrets from provider %w", err).Error())
+		logger.Error(fmt.Errorf("failed to load secrets from provider: %w", err).Error())
 
 		os.Exit(1)
 	}
