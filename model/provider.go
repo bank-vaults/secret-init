@@ -12,26 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package provider
+package model
 
-import (
-	"errors"
-	"os"
+import "context"
 
-	"github.com/bank-vaults/secret-init/model"
-	"github.com/bank-vaults/secret-init/provider/file"
-)
-
-func New(providerName string) (model.Provider, error) {
-	switch providerName {
-	case file.ProviderName:
-		provider, err := file.NewProvider(os.Getenv("SECRETS_FILE_PATH"))
-		if err != nil {
-			return nil, err
-		}
-		return provider, nil
-
-	default:
-		return nil, errors.New("invalid provider specified")
-	}
+// Provider is an interface for securely loading secrets based on environment variables.
+type Provider interface {
+	LoadSecrets(ctx context.Context, envs map[string]string) ([]string, error)
 }

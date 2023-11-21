@@ -20,9 +20,9 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/model"
 )
 
 const ProviderName = "file"
@@ -31,7 +31,7 @@ type Provider struct {
 	secretsFilePath string
 }
 
-func NewFileProvider(secretsFilePath string) (provider.Provider, error) {
+func NewProvider(secretsFilePath string) (model.Provider, error) {
 
 	return &Provider{secretsFilePath: secretsFilePath}, nil
 }
@@ -41,20 +41,20 @@ func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string)
 	secretsMap, err := provider.getSecretsFromFile()
 	if err != nil {
 
-		return nil, fmt.Errorf("failed to load secrets: %w", err)
+		return nil, fmt.Errorf("failed to get secrets from file: %w", err)
 	}
 
 	var secrets []string
-	for key, value := range envs {
-		if strings.HasPrefix(value, "file:") {
+	for envKey, envValue := range envs {
+		if strings.HasPrefix(envValue, "file:") {
 			// Check if the requested secret is in the loaded secret map
-			value = strings.TrimPrefix(value, "file:")
-			secret, ok := secretsMap[value]
+			envValue = strings.TrimPrefix(envValue, "file:")
+			secret, ok := secretsMap[envValue]
 			if !ok {
 
-				return nil, fmt.Errorf("secret %s not found", key)
+				return nil, fmt.Errorf("secret %s not found", envKey)
 			}
-			secrets = append(secrets, fmt.Sprintf("%s=%s", key, secret))
+			secrets = append(secrets, fmt.Sprintf("%s=%s", envKey, secret))
 		}
 	}
 

@@ -38,7 +38,7 @@ func TestNewFileProvider(t *testing.T) {
 	// create new environment variables
 	setupEnvs(t, tmpfile)
 
-	fileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
+	fileProvider, err := NewProvider(os.Getenv("SECRETS_FILE_PATH"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestFileLoadSecrets(t *testing.T) {
 	// for file-path and secrets to get
 	setupEnvs(t, tmpfile)
 
-	fileProvider, err := NewFileProvider(os.Getenv("SECRETS_FILE_PATH"))
+	fileProvider, err := NewProvider(os.Getenv("SECRETS_FILE_PATH"))
 	if err != nil {
 		t.Fatal(err)
 	}
