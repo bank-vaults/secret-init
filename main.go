@@ -33,7 +33,23 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/provider/file"
 )
+
+func NewProvider(providerName string) (provider.Provider, error) {
+	switch providerName {
+	case file.ProviderName:
+		provider, err := file.NewProvider(os.Getenv("SECRETS_FILE_PATH"))
+		if err != nil {
+			return nil, err
+		}
+
+		return provider, nil
+
+	default:
+		return nil, errors.New("invalid provider specified")
+	}
+}
 
 func main() {
 	var logger *slog.Logger
@@ -95,7 +111,7 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	provider, err := provider.New(os.Getenv("PROVIDER"))
+	provider, err := NewProvider(os.Getenv("PROVIDER"))
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 

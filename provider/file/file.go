@@ -22,7 +22,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/bank-vaults/secret-init/model"
+	"github.com/bank-vaults/secret-init/provider"
 )
 
 const ProviderName = "file"
@@ -31,8 +31,7 @@ type Provider struct {
 	secretsFilePath string
 }
 
-func NewProvider(secretsFilePath string) (model.Provider, error) {
-
+func NewProvider(secretsFilePath string) (provider.Provider, error) {
 	return &Provider{secretsFilePath: secretsFilePath}, nil
 }
 
