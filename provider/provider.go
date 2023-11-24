@@ -18,5 +18,5 @@ import "context"
 
 // Provider is an interface for securely loading secrets based on environment variables.
 type Provider interface {
-	LoadSecrets(ctx context.Context, envs map[string]string) ([]string, error)
+	LoadSecrets(ctx context.Context, paths []string) ([]string, error)
 }

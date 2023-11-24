@@ -39,7 +39,7 @@ import (
 func NewProvider(providerName string) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		provider, err := file.NewProvider(os.Getenv("SECRETS_FILE_PATH"))
+		provider, err := file.NewProvider(os.DirFS("/secrets"))
 		if err != nil {
 			return nil, err
 		}
@@ -49,6 +49,59 @@ func NewProvider(providerName string) (provider.Provider, error) {
 	default:
 		return nil, errors.New("invalid provider specified")
 	}
+}
+
+func CreateMapOfEnvs() map[string]string {
+	environ := make(map[string]string, len(os.Environ()))
+	for _, env := range os.Environ() {
+		split := strings.SplitN(env, "=", 2)
+		name := split[0]
+		value := split[1]
+		environ[name] = value
+	}
+
+	return environ
+}
+
+func ExtractPathsFromEnvs(envs map[string]string) []string {
+	var secretPaths []string
+
+	for _, path := range envs {
+		if strings.HasPrefix(path, "file:") {
+			path = strings.TrimPrefix(path, "file://")
+			secretPaths = append(secretPaths, path)
+		}
+	}
+
+	return secretPaths
+}
+
+func CreateEnvsFromLoadedSecrets(envs map[string]string, secrets []string) ([]string, error) {
+	// Reverse the map so we can match
+	// the environment variable key to the secret
+	// by using the secret path
+	reversedEnvs := make(map[string]string)
+	for envKey, path := range envs {
+		if strings.HasPrefix(path, "file:") {
+			path = strings.TrimPrefix(path, "file://")
+			reversedEnvs[path] = envKey
+		}
+	}
+
+	var secretsEnv []string
+	for _, secret := range secrets {
+		split := strings.SplitN(secret, "|", 2)
+		secretPath := split[0]
+
+		secretValue := split[1]
+		secretKey, ok := reversedEnvs[secretPath]
+		if !ok {
+			return nil, fmt.Errorf("failed to find environment variable key for secret path: %s", secretPath)
+		}
+		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secretKey, secretValue))
+	}
+
+	return secretsEnv, nil
 }
 
 func main() {
@@ -136,18 +189,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	environ := make(map[string]string, len(os.Environ()))
-	for _, env := range os.Environ() {
-		split := strings.SplitN(env, "=", 2)
-		name := split[0]
-		value := split[1]
-		environ[name] = value
-	}
+	environ := CreateMapOfEnvs()
+	paths := ExtractPathsFromEnvs(environ)
 
 	ctx := context.Background()
-	envs, err := provider.LoadSecrets(ctx, environ)
+	secrets, err := provider.LoadSecrets(ctx, paths)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to load secrets from provider: %w", err).Error())
+
+		os.Exit(1)
+	}
+
+	secretsEnv, err := CreateEnvsFromLoadedSecrets(environ, secrets)
+	if err != nil {
+		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
 
 		os.Exit(1)
 	}
@@ -164,7 +219,7 @@ func main() {
 	if daemonMode {
 		logger.Info("in daemon mode...")
 		cmd := exec.Command(binary, entrypointCmd[1:]...)
-		cmd.Env = append(os.Environ(), envs...)
+		cmd.Env = append(os.Environ(), secretsEnv...)
 		cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
@@ -213,7 +268,7 @@ func main() {
 
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
-	err = syscall.Exec(binary, entrypointCmd, envs)
+	err = syscall.Exec(binary, entrypointCmd, secretsEnv)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
 

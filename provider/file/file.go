@@ -17,10 +17,7 @@ package file
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
-
-	"gopkg.in/yaml.v3"
+	"io/fs"
 
 	"github.com/bank-vaults/secret-init/provider"
 )
@@ -28,51 +25,72 @@ import (
 const ProviderName = "file"
 
 type Provider struct {
-	secretsFilePath string
+	fs fs.FS
 }
 
-func NewProvider(secretsFilePath string) (provider.Provider, error) {
-	return &Provider{secretsFilePath: secretsFilePath}, nil
-}
-
-func (provider *Provider) LoadSecrets(_ context.Context, envs map[string]string) ([]string, error) {
-	// extract secrets from the file to a map
-	secretsMap, err := provider.getSecretsFromFile()
-	if err != nil {
-
-		return nil, fmt.Errorf("failed to get secrets from file: %w", err)
+func NewProvider(fs fs.FS) (provider.Provider, error) {
+	if fs == nil {
+		return nil, fmt.Errorf("file system is nil")
 	}
 
-	var secrets []string
-	for envKey, envValue := range envs {
-		if strings.HasPrefix(envValue, "file:") {
-			// Check if the requested secret is in the loaded secret map
-			envValue = strings.TrimPrefix(envValue, "file:")
-			secret, ok := secretsMap[envValue]
-			if !ok {
+	isEmpty, err := isFileSystemEmpty(fs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if file system is empty: %w", err)
+	}
+	if isEmpty {
+		return nil, fmt.Errorf("file system is empty")
+	}
 
-				return nil, fmt.Errorf("secret %s not found", envKey)
-			}
-			secrets = append(secrets, fmt.Sprintf("%s=%s", envKey, secret))
+	return &Provider{fs: fs}, nil
+}
+
+func (provider *Provider) LoadSecrets(_ context.Context, paths []string) ([]string, error) {
+	var secrets []string
+
+	for i, path := range paths {
+		secret, err := provider.getSecretFromFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret from file: %w", err)
 		}
+		// Add the secret path with a "|" separator character
+		// to the secrets slice along with the secret
+		// so later we can match it to the environment key
+		secrets = append(secrets, paths[i]+"|"+secret)
 	}
 
 	return secrets, nil
 }
 
-func (provider *Provider) getSecretsFromFile() (map[string]string, error) {
-	data, err := os.ReadFile(provider.secretsFilePath)
+func isFileSystemEmpty(fsys fs.FS) (bool, error) {
+	dir, err := fs.ReadDir(fsys, ".")
+	fmt.Println(dir, err)
 	if err != nil {
-
-		return nil, fmt.Errorf("failed to read secrets file: %w", err)
+		return false, err
 	}
 
-	secretsMap := make(map[string]string)
-	err = yaml.Unmarshal(data, &secretsMap)
-	if err != nil {
-
-		return nil, fmt.Errorf("failed to unmarshal YAML: %w", err)
+	for _, entry := range dir {
+		if entry.IsDir() || entry.Type().IsRegular() {
+			return false, nil
+		}
 	}
 
-	return secretsMap, nil
+	return true, nil
+}
+
+func (provider *Provider) getSecretFromFile(path string) (string, error) {
+	content, err := provider.readFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
+
+func (provider *Provider) readFile(path string) ([]byte, error) {
+	content, err := fs.ReadFile(provider.fs, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return content, nil
 }

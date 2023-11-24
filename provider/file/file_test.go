@@ -16,152 +16,101 @@ package file
 
 import (
 	"context"
-	"os"
-	"strings"
+	"io/fs"
 	"testing"
+	"testing/fstest"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	exitCode := m.Run()
-
-	// teardown environment variables after tests are done
-	teardownEnvs()
-
-	os.Exit(exitCode)
-}
-
-func TestNewFileProvider(t *testing.T) {
-	// create a new secret file and write secrets into it
-	tmpfile := createTempFileWithContent(t)
-	defer os.Remove(tmpfile.Name())
-
-	// create new environment variables
-	setupEnvs(t, tmpfile)
-
-	fileProvider, err := NewProvider(os.Getenv("SECRETS_FILE_PATH"))
-	if err != nil {
-		t.Fatal(err)
+func TestNewProvider(t *testing.T) {
+	tests := []struct {
+		name     string
+		fs       fs.FS
+		wantErr  bool
+		wantType bool
+	}{
+		{
+			name: "Valid file system",
+			fs: fstest.MapFS{
+				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
+				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+			},
+			wantErr:  false,
+			wantType: true,
+		},
+		{
+			name:     "Nil file system",
+			fs:       nil,
+			wantErr:  true,
+			wantType: false,
+		},
+		{
+			name:     "Empty file system",
+			fs:       fstest.MapFS{},
+			wantErr:  true,
+			wantType: false,
+		},
 	}
 
-	// check if file provider is correctly created
-	_, ok := fileProvider.(*Provider)
-	if !ok {
-		t.Fatal("provider is not of type file")
-	}
-}
+	for _, tt := range tests {
+		ttp := tt
+		t.Run(ttp.name, func(t *testing.T) {
 
-func TestFileLoadSecrets(t *testing.T) {
-	// create a new secret-file and write secrets into it
-	tmpfile := createTempFileWithContent(t)
-	defer os.Remove(tmpfile.Name())
-
-	// create new environment variables
-	// for file-path and secrets to get
-	setupEnvs(t, tmpfile)
-
-	fileProvider, err := NewProvider(os.Getenv("SECRETS_FILE_PATH"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	environ := make(map[string]string, len(os.Environ()))
-	for _, env := range os.Environ() {
-		split := strings.SplitN(env, "=", 2)
-		name := split[0]
-		value := split[1]
-		environ[name] = value
-	}
-
-	ctx := context.Background()
-	envs, err := fileProvider.LoadSecrets(ctx, environ)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	test := []string{
-		"MYSQL_PASSWORD=3xtr3ms3cr3t",
-		"AWS_SECRET_ACCESS_KEY=s3cr3t",
-		"AWS_ACCESS_KEY_ID=secretId",
-	}
-
-	// check if secrets have been correctly loaded
-	areEqual(t, envs, test)
-}
-
-func areEqual(t *testing.T, actual, expected []string) {
-	actualMap := make(map[string]string, len(expected))
-	expectedMap := make(map[string]string, len(expected))
-
-	for _, env := range actual {
-		split := strings.SplitN(env, "=", 2)
-		key := split[0]
-		value := split[1]
-		actualMap[key] = value
-	}
-
-	for _, env := range expected {
-		split := strings.SplitN(env, "=", 2)
-		key := split[0]
-		value := split[1]
-		expectedMap[key] = value
-	}
-
-	for key, actualValue := range actualMap {
-		expectedValue, ok := expectedMap[key]
-		if !ok || actualValue != expectedValue {
-			t.Fatalf("mismatch for key %s: actual: %s, expected: %s", key, actualValue, expectedValue)
-		}
+			prov, err := NewProvider(ttp.fs)
+			if (err != nil) != ttp.wantErr {
+				t.Fatalf("NewProvider() error = %v, wantErr %v", err, ttp.wantErr)
+				return
+			}
+			// Use type assertion to check if the provider is of the correct type
+			_, ok := prov.(*Provider)
+			if ok != ttp.wantType {
+				t.Fatalf("NewProvider() = %v, wantType %v", ok, ttp.wantType)
+			}
+		})
 	}
 }
 
-func createTempFileWithContent(t *testing.T) *os.File {
-	content := []byte("sqlPassword: 3xtr3ms3cr3t\nawsSecretAccessKey: s3cr3t\nawsAccessKeyId: secretId\n")
-	tmpfile, err := os.CreateTemp("", "secrets-*.yaml")
-	if err != nil {
-		t.Fatal(err)
+func TestLoadSecrets(t *testing.T) {
+	tests := []struct {
+		name     string
+		fs       fs.FS
+		paths    []string
+		wantErr  bool
+		wantData []string
+	}{
+		{
+			name: "Load secrets successfully",
+			fs: fstest.MapFS{
+				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
+				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+			},
+			paths:    []string{"test/secrets/sqlpass.txt", "test/secrets/awsaccess.txt"},
+			wantErr:  false,
+			wantData: []string{"test/secrets/sqlpass.txt|3xtr3ms3cr3t", "test/secrets/awsaccess.txt|s3cr3t"},
+		},
+		{
+			name: "Fail to load secrets due to invalid path",
+			fs: fstest.MapFS{
+				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
+				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+			},
+			paths:    []string{"test/secrets/mistake/sqlpass.txt", "test/secrets/mistake/awsaccess.txt"},
+			wantErr:  true,
+			wantData: nil,
+		},
 	}
 
-	_, err = tmpfile.Write(content)
-	if err != nil {
-		t.Fatal(err)
-	}
+	for _, tt := range tests {
+		ttp := tt
+		t.Run(ttp.name, func(t *testing.T) {
+			provider, err := NewProvider(ttp.fs)
+			if assert.NoError(t, err, "Unexpected error") {
+				secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
+				assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
 
-	err = tmpfile.Close()
-	if err != nil {
-		t.Fatal(err)
+				assert.Equal(t, ttp.wantData, secrets, "Unexpected secrets loaded")
+			}
+		})
 	}
-
-	return tmpfile
-}
-
-func setupEnvs(t *testing.T, tmpfile *os.File) {
-	err := os.Setenv("PROVIDER", "file")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("SECRETS_FILE_PATH", tmpfile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.Setenv("MYSQL_PASSWORD", "file:sqlPassword")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "file:awsSecretAccessKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.Setenv("AWS_ACCESS_KEY_ID", "file:awsAccessKeyId")
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func teardownEnvs() {
-	os.Unsetenv("PROVIDER")
-	os.Unsetenv("SECRETS_FILE_PATH")
-	os.Unsetenv("MYSQL_PASSWORD")
-	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
-	os.Unsetenv("AWS_ACCESS_KEY_ID")
 }
