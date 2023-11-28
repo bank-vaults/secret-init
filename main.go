@@ -24,7 +24,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"slices"
-	"strings"
 	"syscall"
 	"time"
 
@@ -39,7 +38,7 @@ import (
 func NewProvider(providerName string) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		provider, err := file.NewProvider(os.DirFS("/secrets"))
+		provider, err := file.NewProvider(os.DirFS("/"))
 		if err != nil {
 			return nil, err
 		}
@@ -49,59 +48,6 @@ func NewProvider(providerName string) (provider.Provider, error) {
 	default:
 		return nil, errors.New("invalid provider specified")
 	}
-}
-
-func CreateMapOfEnvs() map[string]string {
-	environ := make(map[string]string, len(os.Environ()))
-	for _, env := range os.Environ() {
-		split := strings.SplitN(env, "=", 2)
-		name := split[0]
-		value := split[1]
-		environ[name] = value
-	}
-
-	return environ
-}
-
-func ExtractPathsFromEnvs(envs map[string]string) []string {
-	var secretPaths []string
-
-	for _, path := range envs {
-		if strings.HasPrefix(path, "file:") {
-			path = strings.TrimPrefix(path, "file://")
-			secretPaths = append(secretPaths, path)
-		}
-	}
-
-	return secretPaths
-}
-
-func CreateEnvsFromLoadedSecrets(envs map[string]string, secrets []string) ([]string, error) {
-	// Reverse the map so we can match
-	// the environment variable key to the secret
-	// by using the secret path
-	reversedEnvs := make(map[string]string)
-	for envKey, path := range envs {
-		if strings.HasPrefix(path, "file:") {
-			path = strings.TrimPrefix(path, "file://")
-			reversedEnvs[path] = envKey
-		}
-	}
-
-	var secretsEnv []string
-	for _, secret := range secrets {
-		split := strings.SplitN(secret, "|", 2)
-		secretPath := split[0]
-
-		secretValue := split[1]
-		secretKey, ok := reversedEnvs[secretPath]
-		if !ok {
-			return nil, fmt.Errorf("failed to find environment variable key for secret path: %s", secretPath)
-		}
-		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secretKey, secretValue))
-	}
-
-	return secretsEnv, nil
 }
 
 func main() {
@@ -189,7 +135,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	environ := CreateMapOfEnvs()
+	environ := GetEnvironMap()
 	paths := ExtractPathsFromEnvs(environ)
 
 	ctx := context.Background()
@@ -199,8 +145,7 @@ func main() {
 
 		os.Exit(1)
 	}
-
-	secretsEnv, err := CreateEnvsFromLoadedSecrets(environ, secrets)
+	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
 

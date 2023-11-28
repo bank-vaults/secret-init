@@ -21,6 +21,8 @@ import (
 	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bank-vaults/secret-init/provider"
 )
 
 func TestNewProvider(t *testing.T) {
@@ -35,6 +37,7 @@ func TestNewProvider(t *testing.T) {
 			fs: fstest.MapFS{
 				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
 				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
 			},
 			wantErr:  false,
 			wantType: true,
@@ -45,18 +48,11 @@ func TestNewProvider(t *testing.T) {
 			wantErr:  true,
 			wantType: false,
 		},
-		{
-			name:     "Empty file system",
-			fs:       fstest.MapFS{},
-			wantErr:  true,
-			wantType: false,
-		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-
 			prov, err := NewProvider(ttp.fs)
 			if (err != nil) != ttp.wantErr {
 				t.Fatalf("NewProvider() error = %v, wantErr %v", err, ttp.wantErr)
@@ -77,25 +73,39 @@ func TestLoadSecrets(t *testing.T) {
 		fs       fs.FS
 		paths    []string
 		wantErr  bool
-		wantData []string
+		wantData []provider.Secret
 	}{
 		{
 			name: "Load secrets successfully",
 			fs: fstest.MapFS{
 				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
 				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
 			},
-			paths:    []string{"test/secrets/sqlpass.txt", "test/secrets/awsaccess.txt"},
-			wantErr:  false,
-			wantData: []string{"test/secrets/sqlpass.txt|3xtr3ms3cr3t", "test/secrets/awsaccess.txt|s3cr3t"},
+			paths: []string{
+				"test/secrets/sqlpass.txt",
+				"test/secrets/awsaccess.txt",
+				"test/secrets/awsid.txt",
+			},
+			wantErr: false,
+			wantData: []provider.Secret{
+				{Path: "test/secrets/sqlpass.txt", Value: "3xtr3ms3cr3t"},
+				{Path: "test/secrets/awsaccess.txt", Value: "s3cr3t"},
+				{Path: "test/secrets/awsid.txt", Value: "secretId"},
+			},
 		},
 		{
 			name: "Fail to load secrets due to invalid path",
 			fs: fstest.MapFS{
 				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
 				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
+				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
 			},
-			paths:    []string{"test/secrets/mistake/sqlpass.txt", "test/secrets/mistake/awsaccess.txt"},
+			paths: []string{
+				"test/secrets/mistake/sqlpass.txt",
+				"test/secrets/mistake/awsaccess.txt",
+				"test/secrets/mistake/awsid.txt",
+			},
 			wantErr:  true,
 			wantData: nil,
 		},
@@ -108,8 +118,7 @@ func TestLoadSecrets(t *testing.T) {
 			if assert.NoError(t, err, "Unexpected error") {
 				secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
 				assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-
-				assert.Equal(t, ttp.wantData, secrets, "Unexpected secrets loaded")
+				assert.ElementsMatch(t, ttp.wantData, secrets, "Unexpected secrets loaded")
 			}
 		})
 	}

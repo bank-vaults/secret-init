@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
 )
@@ -33,64 +34,33 @@ func NewProvider(fs fs.FS) (provider.Provider, error) {
 		return nil, fmt.Errorf("file system is nil")
 	}
 
-	isEmpty, err := isFileSystemEmpty(fs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if file system is empty: %w", err)
-	}
-	if isEmpty {
-		return nil, fmt.Errorf("file system is empty")
-	}
-
 	return &Provider{fs: fs}, nil
 }
 
-func (provider *Provider) LoadSecrets(_ context.Context, paths []string) ([]string, error) {
-	var secrets []string
+func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
+	var secrets []provider.Secret
 
-	for i, path := range paths {
-		secret, err := provider.getSecretFromFile(path)
+	for _, path := range paths {
+		secret, err := p.getSecretFromFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get secret from file: %w", err)
 		}
-		// Add the secret path with a "|" separator character
-		// to the secrets slice along with the secret
-		// so later we can match it to the environment key
-		secrets = append(secrets, paths[i]+"|"+secret)
+
+		secrets = append(secrets, provider.Secret{
+			Path:  path,
+			Value: secret,
+		})
 	}
 
 	return secrets, nil
 }
 
-func isFileSystemEmpty(fsys fs.FS) (bool, error) {
-	dir, err := fs.ReadDir(fsys, ".")
-	fmt.Println(dir, err)
+func (p *Provider) getSecretFromFile(filepath string) (string, error) {
+	filepath = strings.TrimLeft(filepath, "/")
+	content, err := fs.ReadFile(p.fs, filepath)
 	if err != nil {
-		return false, err
-	}
-
-	for _, entry := range dir {
-		if entry.IsDir() || entry.Type().IsRegular() {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func (provider *Provider) getSecretFromFile(path string) (string, error) {
-	content, err := provider.readFile(path)
-	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read file: %w", err)
 	}
 
 	return string(content), nil
-}
-
-func (provider *Provider) readFile(path string) ([]byte, error) {
-	content, err := fs.ReadFile(provider.fs, path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	return content, nil
 }
