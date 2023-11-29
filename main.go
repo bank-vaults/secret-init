@@ -32,7 +32,23 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/provider/file"
 )
+
+func NewProvider(providerName string) (provider.Provider, error) {
+	switch providerName {
+	case file.ProviderName:
+		provider, err := file.NewProvider(os.DirFS("/"))
+		if err != nil {
+			return nil, err
+		}
+
+		return provider, nil
+
+	default:
+		return nil, errors.New("invalid provider specified")
+	}
+}
 
 func main() {
 	var logger *slog.Logger
@@ -94,8 +110,12 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	// TODO: enable providers
-	var provider provider.Provider
+	provider, err := NewProvider(os.Getenv("PROVIDER"))
+	if err != nil {
+		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
+
+		os.Exit(1)
+	}
 
 	if len(os.Args) == 1 {
 		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
@@ -115,10 +135,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	environ := GetEnvironMap()
+	paths := ExtractPathsFromEnvs(environ)
+
 	ctx := context.Background()
-	envs, err := provider.LoadSecrets(ctx, os.Environ())
+	secrets, err := provider.LoadSecrets(ctx, paths)
 	if err != nil {
-		logger.Error("could not retrieve secrets from the provider.", err)
+		logger.Error(fmt.Errorf("failed to load secrets from provider: %w", err).Error())
+
+		os.Exit(1)
+	}
+	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
+	if err != nil {
+		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
 
 		os.Exit(1)
 	}
@@ -135,7 +164,7 @@ func main() {
 	if daemonMode {
 		logger.Info("in daemon mode...")
 		cmd := exec.Command(binary, entrypointCmd[1:]...)
-		cmd.Env = append(os.Environ(), envs...)
+		cmd.Env = append(os.Environ(), secretsEnv...)
 		cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
@@ -184,7 +213,7 @@ func main() {
 
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
-	err = syscall.Exec(binary, entrypointCmd, envs)
+	err = syscall.Exec(binary, entrypointCmd, secretsEnv)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
 
