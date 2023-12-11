@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/samber/slog-multi v1.0.2
 	github.com/samber/slog-syslog v1.0.0
-	github.com/spf13/cast v1.5.1
+	github.com/spf13/cast v1.6.0
 )
 
 require (
