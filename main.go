@@ -33,15 +33,28 @@ import (
 
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
+	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func NewProvider(providerName string) (provider.Provider, error) {
+func NewProvider(providerName string, logger *slog.Logger) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		config := file.NewConfig()
+		config := file.NewConfig(logger)
 		provider, err := file.NewProvider(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create file provider: %w", err)
+		}
+
+		return provider, nil
+	case vault.ProviderName:
+		config, err := vault.NewConfig(logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault config: %w", err)
+		}
+
+		provider, err := vault.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
 
 		return provider, nil
@@ -111,7 +124,7 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	provider, err := NewProvider(os.Getenv("PROVIDER"))
+	provider, err := NewProvider(os.Getenv("PROVIDER"), logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 

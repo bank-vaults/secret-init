@@ -12,28 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package file
+package vault
 
 import (
-	"log/slog"
-	"os"
+	"context"
+
+	"github.com/bank-vaults/secret-init/provider"
 )
 
-const (
-	EnvPrefix        = "FILE_"
-	DefaultMountPath = "/"
-)
+const ProviderName = "vault"
 
-type Config struct {
-	MountPath string `json:"mountPath"`
+type Provider struct {
 }
 
-func NewConfig(logger *slog.Logger) *Config {
-	mountPath, ok := os.LookupEnv(EnvPrefix + "MOUNT_PATH")
-	if !ok {
-		logger.Warn("Mount path not provided. Using default.", slog.String("Default Mount Path", DefaultMountPath))
-		mountPath = DefaultMountPath
-	}
+func NewProvider(_ *Config) (provider.Provider, error) {
 
-	return &Config{MountPath: mountPath}
+	return &Provider{}, nil
+}
+
+func (p *Provider) LoadSecrets(_ context.Context, _ []string) ([]provider.Secret, error) {
+
+	return nil, nil
 }
