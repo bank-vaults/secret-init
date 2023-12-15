@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
@@ -29,10 +30,8 @@ type Provider struct {
 	fs fs.FS
 }
 
-func NewProvider(fs fs.FS) (provider.Provider, error) {
-	if fs == nil {
-		return nil, fmt.Errorf("file system is nil")
-	}
+func NewProvider(config *Config) (provider.Provider, error) {
+	fs := os.DirFS(config.MountPath)
 
 	return &Provider{fs: fs}, nil
 }
@@ -55,9 +54,10 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return secrets, nil
 }
 
-func (p *Provider) getSecretFromFile(filepath string) (string, error) {
-	filepath = strings.TrimLeft(filepath, "/")
-	content, err := fs.ReadFile(p.fs, filepath)
+func (p *Provider) getSecretFromFile(path string) (string, error) {
+	path = strings.TrimLeft(path, "/")
+	fmt.Println("file path:", path, "fs:", p.fs)
+	content, err := fs.ReadFile(p.fs, path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
