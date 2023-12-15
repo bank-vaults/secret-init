@@ -16,7 +16,6 @@ package file
 
 import (
 	"context"
-	"io/fs"
 	"testing"
 	"testing/fstest"
 
@@ -28,41 +27,27 @@ import (
 func TestNewProvider(t *testing.T) {
 	tests := []struct {
 		name     string
-		fs       fs.FS
+		config   *Config
 		wantErr  bool
 		wantType bool
 	}{
 		{
-			name: "Valid file system",
-			fs: fstest.MapFS{
-				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
-				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
-				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
+			name: "Valid config",
+			config: &Config{
+				MountPath: "test/secrets",
 			},
 			wantErr:  false,
 			wantType: true,
-		},
-		{
-			name:     "Nil file system",
-			fs:       nil,
-			wantErr:  true,
-			wantType: false,
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			prov, err := NewProvider(ttp.fs)
-			if (err != nil) != ttp.wantErr {
-				t.Fatalf("NewProvider() error = %v, wantErr %v", err, ttp.wantErr)
-				return
-			}
-			// Use type assertion to check if the provider is of the correct type
-			_, ok := prov.(*Provider)
-			if ok != ttp.wantType {
-				t.Fatalf("NewProvider() = %v, wantType %v", ok, ttp.wantType)
-			}
+			provider, err := NewProvider(ttp.config)
+
+			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
+			assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
 		})
 	}
 }
@@ -70,18 +55,12 @@ func TestNewProvider(t *testing.T) {
 func TestLoadSecrets(t *testing.T) {
 	tests := []struct {
 		name     string
-		fs       fs.FS
 		paths    []string
 		wantErr  bool
 		wantData []provider.Secret
 	}{
 		{
 			name: "Load secrets successfully",
-			fs: fstest.MapFS{
-				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
-				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
-				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
-			},
 			paths: []string{
 				"test/secrets/sqlpass.txt",
 				"test/secrets/awsaccess.txt",
@@ -96,11 +75,6 @@ func TestLoadSecrets(t *testing.T) {
 		},
 		{
 			name: "Fail to load secrets due to invalid path",
-			fs: fstest.MapFS{
-				"test/secrets/sqlpass.txt":   &fstest.MapFile{Data: []byte("3xtr3ms3cr3t")},
-				"test/secrets/awsaccess.txt": &fstest.MapFile{Data: []byte("s3cr3t")},
-				"test/secrets/awsid.txt":     &fstest.MapFile{Data: []byte("secretId")},
-			},
 			paths: []string{
 				"test/secrets/mistake/sqlpass.txt",
 				"test/secrets/mistake/awsaccess.txt",
@@ -114,12 +88,16 @@ func TestLoadSecrets(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			provider, err := NewProvider(ttp.fs)
-			if assert.NoError(t, err, "Unexpected error") {
-				secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
-				assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-				assert.ElementsMatch(t, ttp.wantData, secrets, "Unexpected secrets loaded")
+			fs := fstest.MapFS{
+				"test/secrets/sqlpass.txt":   {Data: []byte("3xtr3ms3cr3t")},
+				"test/secrets/awsaccess.txt": {Data: []byte("s3cr3t")},
+				"test/secrets/awsid.txt":     {Data: []byte("secretId")},
 			}
+			provider := Provider{fs: fs}
+			secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
+
+			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
+			assert.Equal(t, ttp.wantData, secrets, "Unexpected secrets")
 		})
 	}
 }

@@ -38,7 +38,8 @@ import (
 func NewProvider(providerName string) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		provider, err := file.NewProvider(os.DirFS("/"))
+		config := file.NewConfig()
+		provider, err := file.NewProvider(config)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +56,7 @@ func main() {
 	{
 		var level slog.Level
 
-		err := level.UnmarshalText([]byte(os.Getenv("VAULT_LOG_LEVEL")))
+		err := level.UnmarshalText([]byte(os.Getenv("SECRET_INIT_LOG_LEVEL")))
 		if err != nil { // Silently fall back to info level
 			level = slog.LevelInfo
 		}
@@ -68,7 +69,7 @@ func main() {
 
 		router := slogmulti.Router()
 
-		if cast.ToBool(os.Getenv("VAULT_JSON_LOG")) {
+		if cast.ToBool(os.Getenv("SECRET_INIT_JSON_LOG")) {
 			// Send logs with level higher than warning to stderr
 			router = router.Add(
 				slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
@@ -94,7 +95,7 @@ func main() {
 			)
 		}
 
-		if logServerAddr := os.Getenv("VAULT_ENV_LOG_SERVER"); logServerAddr != "" {
+		if logServerAddr := os.Getenv("SECRET_INIT_LOG_SERVER"); logServerAddr != "" {
 			writer, err := net.Dial("udp", logServerAddr)
 
 			// We silently ignore syslog connection errors for the lack of a better solution
@@ -123,8 +124,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	daemonMode := cast.ToBool(os.Getenv("VAULT_ENV_DAEMON"))
-	delayExec := cast.ToDuration(os.Getenv("VAULT_ENV_DELAY"))
+	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON"))
+	delayExec := cast.ToDuration(os.Getenv("SECRET_INIT_DELAY"))
 
 	entrypointCmd := os.Args[1:]
 
