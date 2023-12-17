@@ -58,7 +58,7 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 	vaultToken := os.Getenv(EnvPrefix + "TOKEN")
 	isLogin := vaultToken == vaultLogin
 	tokenFile, ok := os.LookupEnv(EnvPrefix + "TOKEN_FILE")
-	if !ok {
+	if ok {
 		if b, err := os.ReadFile(tokenFile); err == nil {
 			vaultToken = string(b)
 		} else {

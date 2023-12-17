@@ -21,9 +21,8 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	vaultapi "github.com/hashicorp/vault/api"
-
 	"github.com/bank-vaults/vault-sdk/vault"
+	vaultapi "github.com/hashicorp/vault/api"
 )
 
 type daemonSecretRenewer struct {
