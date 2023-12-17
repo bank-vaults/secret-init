@@ -21,6 +21,7 @@ import (
 
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
+	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
 func GetEnvironMap() map[string]string {
@@ -77,6 +78,10 @@ func getProviderPath(path string) (*string, string) {
 	if strings.HasPrefix(path, "file:") {
 		var fileProviderName = file.ProviderName
 		return &fileProviderName, strings.TrimPrefix(path, "file:")
+	}
+	if strings.HasPrefix(path, "vault:") {
+		var vaultProviderName = vault.ProviderName
+		return &vaultProviderName, strings.TrimPrefix(path, "vault:")
 	}
 
 	return nil, path

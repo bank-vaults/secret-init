@@ -24,12 +24,14 @@ import (
 )
 
 const (
-	EnvPrefix  = "VAULT_"
+	EnvPrefix = "VAULT_"
+	// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
+	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"
 )
 
 type Config struct {
-	Islogin              bool
+	Islogin              bool     `json:"islogin"`
 	Token                string   `json:"token"`
 	TokenFile            string   `json:"tokenFile"`
 	Role                 string   `json:"role"`
@@ -42,10 +44,12 @@ type Config struct {
 	DaemonMode           bool     `json:"daemonMode"`
 	IgnoreMissingSecrets bool     `json:"ignoreMissingSecrets"`
 	Paths                string   `json:"paths"`
-	RevokeToken          string   `json:"revokeToken"`
+	RevokeToken          bool     `json:"revokeToken"`
+	Logger               *slog.Logger
+	Sigs                 chan os.Signal
 }
 
-func NewConfig(logger *slog.Logger) (*Config, error) {
+func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 	var (
 		role, path, authMethod          string
 		hasRole, hasPath, hasAuthMethod bool
@@ -77,8 +81,8 @@ func NewConfig(logger *slog.Logger) (*Config, error) {
 		}
 	}
 
+	// TODO: make this generic, since it's not specific to vault
 	passthroughEnvVars := strings.Split(os.Getenv("SECRET_INIT_PASSTHROUGH"), ",")
-
 	if isLogin {
 		_ = os.Setenv(EnvPrefix+"TOKEN", vaultLogin)
 		passthroughEnvVars = append(passthroughEnvVars, EnvPrefix+"TOKEN")
@@ -88,10 +92,15 @@ func NewConfig(logger *slog.Logger) (*Config, error) {
 	transitPath := os.Getenv(EnvPrefix + "TRANSIT_PATH")
 	transitBatchSize := cast.ToInt(os.Getenv(EnvPrefix + "TRANSIT_BATCH_SIZE"))
 	daemonMode := cast.ToBool(os.Getenv(EnvPrefix + "DAEMON_MODE"))
+	if daemonMode {
+		logger.Info("Daemon mode enabled. Will renew secrets in the background.")
+	}
+
+	// Used both for reading secrets and transit encryption
 	ignoreMissingSecrets := cast.ToBool(os.Getenv(EnvPrefix + "IGNORE_MISSING_SECRETS"))
 
-	paths := os.Getenv("SECRET_INIT_FROM_PATH")
-	revokeToken := os.Getenv(EnvPrefix + "REVOKE_TOKEN")
+	paths := os.Getenv("VAULT_FROM_PATH")
+	revokeToken := cast.ToBool(os.Getenv(EnvPrefix + "REVOKE_TOKEN"))
 
 	return &Config{
 		Islogin:              isLogin,
@@ -108,5 +117,7 @@ func NewConfig(logger *slog.Logger) (*Config, error) {
 		IgnoreMissingSecrets: ignoreMissingSecrets,
 		Paths:                paths,
 		RevokeToken:          revokeToken,
+		Logger:               logger,
+		Sigs:                 sigs,
 	}, nil
 }

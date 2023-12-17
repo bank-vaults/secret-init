@@ -36,7 +36,7 @@ import (
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func NewProvider(providerName string, logger *slog.Logger) (provider.Provider, error) {
+func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
 		config := file.NewConfig(logger)
@@ -47,7 +47,7 @@ func NewProvider(providerName string, logger *slog.Logger) (provider.Provider, e
 
 		return provider, nil
 	case vault.ProviderName:
-		config, err := vault.NewConfig(logger)
+		config, err := vault.NewConfig(logger, sigs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
@@ -124,7 +124,9 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	provider, err := NewProvider(os.Getenv("PROVIDER"), logger)
+	sigs := make(chan os.Signal, 1)
+
+	provider, err := NewProvider(os.Getenv("PROVIDER"), logger, sigs)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 
@@ -165,8 +167,6 @@ func main() {
 
 		os.Exit(1)
 	}
-
-	sigs := make(chan os.Signal, 1)
 
 	if delayExec > 0 {
 		logger.Info(fmt.Sprintf("sleeping for %s...", delayExec))
