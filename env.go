@@ -81,7 +81,8 @@ func getProviderPath(path string) (*string, string) {
 	}
 	if strings.HasPrefix(path, "vault:") {
 		var vaultProviderName = vault.ProviderName
-		return &vaultProviderName, strings.TrimPrefix(path, "vault:")
+		// Do not remove prefix since it's processed by the provider
+		return &vaultProviderName, path
 	}
 
 	return nil, path

@@ -49,16 +49,60 @@ type Config struct {
 	Sigs                 chan os.Signal
 }
 
+type envType struct {
+	login bool
+}
+
+var sanitizeEnvmap = map[string]envType{
+	"VAULT_TOKEN":                  {login: true},
+	"VAULT_ADDR":                   {login: true},
+	"VAULT_AGENT_ADDR":             {login: true},
+	"VAULT_CACERT":                 {login: true},
+	"VAULT_CAPATH":                 {login: true},
+	"VAULT_CLIENT_CERT":            {login: true},
+	"VAULT_CLIENT_KEY":             {login: true},
+	"VAULT_CLIENT_TIMEOUT":         {login: true},
+	"VAULT_SRV_LOOKUP":             {login: true},
+	"VAULT_SKIP_VERIFY":            {login: true},
+	"VAULT_NAMESPACE":              {login: true},
+	"VAULT_TLS_SERVER_NAME":        {login: true},
+	"VAULT_WRAP_TTL":               {login: true},
+	"VAULT_MFA":                    {login: true},
+	"VAULT_MAX_RETRIES":            {login: true},
+	"VAULT_CLUSTER_ADDR":           {login: false},
+	"VAULT_REDIRECT_ADDR":          {login: false},
+	"VAULT_CLI_NO_COLOR":           {login: false},
+	"VAULT_RATE_LIMIT":             {login: false},
+	"VAULT_ROLE":                   {login: false},
+	"VAULT_PATH":                   {login: false},
+	"VAULT_AUTH_METHOD":            {login: false},
+	"VAULT_TRANSIT_KEY_ID":         {login: false},
+	"VAULT_TRANSIT_PATH":           {login: false},
+	"VAULT_TRANSIT_BATCH_SIZE":     {login: false},
+	"VAULT_IGNORE_MISSING_SECRETS": {login: false},
+	"SECRET_INIT_PASSTHROUGH":      {login: false},
+	"VAULT_JSON_LOG":               {login: false},
+	"VAULT_LOG_LEVEL":              {login: false},
+	"VAULT_REVOKE_TOKEN":           {login: false},
+	"SECRET_INIT_DAEMON":           {login: false},
+	"SECRET_INIT_FROM_PATH":        {login: false},
+	"SECRET_INIT_DELAY":            {login: false},
+}
+
 func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 	var (
 		role, path, authMethod          string
 		hasRole, hasPath, hasAuthMethod bool
 	)
 
+	// The login procedure takes the token from a file (if using Vault Agent)
+	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
+	// so if we got a VAULT_TOKEN for the special value with "vault:login"
 	vaultToken := os.Getenv(EnvPrefix + "TOKEN")
 	isLogin := vaultToken == vaultLogin
 	tokenFile, ok := os.LookupEnv(EnvPrefix + "TOKEN_FILE")
 	if ok {
+		// load token from vault-agent .vault-token or injected webhook
 		if b, err := os.ReadFile(tokenFile); err == nil {
 			vaultToken = string(b)
 		} else {
@@ -70,7 +114,7 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		if isLogin {
 			_ = os.Unsetenv(EnvPrefix + "TOKEN")
 		}
-
+		// will use role/path based authentication
 		role, hasRole = os.LookupEnv(EnvPrefix + "ROLE")
 		path, hasPath = os.LookupEnv(EnvPrefix + "PATH")
 		authMethod, hasAuthMethod = os.LookupEnv(EnvPrefix + "AUTH_METHOD")
@@ -81,25 +125,22 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		}
 	}
 
-	// TODO: make this generic, since it's not specific to vault
+	// TODO(csatib02): make this generic, since it's not specific to vault
 	passthroughEnvVars := strings.Split(os.Getenv("SECRET_INIT_PASSTHROUGH"), ",")
 	if isLogin {
 		_ = os.Setenv(EnvPrefix+"TOKEN", vaultLogin)
 		passthroughEnvVars = append(passthroughEnvVars, EnvPrefix+"TOKEN")
 	}
 
+	// injector configuration
 	transitKeyID := os.Getenv(EnvPrefix + "TRANSIT_KEY_ID")
 	transitPath := os.Getenv(EnvPrefix + "TRANSIT_PATH")
 	transitBatchSize := cast.ToInt(os.Getenv(EnvPrefix + "TRANSIT_BATCH_SIZE"))
 	daemonMode := cast.ToBool(os.Getenv(EnvPrefix + "DAEMON_MODE"))
-	if daemonMode {
-		logger.Info("Daemon mode enabled. Will renew secrets in the background.")
-	}
-
 	// Used both for reading secrets and transit encryption
 	ignoreMissingSecrets := cast.ToBool(os.Getenv(EnvPrefix + "IGNORE_MISSING_SECRETS"))
 
-	paths := os.Getenv("VAULT_FROM_PATH")
+	paths := os.Getenv(EnvPrefix + "FROM_PATH")
 	revokeToken := cast.ToBool(os.Getenv(EnvPrefix + "REVOKE_TOKEN"))
 
 	return &Config{

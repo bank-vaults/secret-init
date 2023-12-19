@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/bank-vaults/internal/injector"
 	"github.com/bank-vaults/vault-sdk/vault"
@@ -29,12 +30,33 @@ import (
 const ProviderName = "vault"
 
 type Provider struct {
-	client         *vault.Client
-	injectorConfig injector.Config
-	secretRenewer  injector.SecretRenewer
-	paths          string
-	revokeToken    bool
-	logger         *slog.Logger
+	isLogin            bool
+	client             *vault.Client
+	injectorConfig     injector.Config
+	secretRenewer      injector.SecretRenewer
+	passthroughEnvVars []string
+	paths              string
+	revokeToken        bool
+	logger             *slog.Logger
+}
+
+type sanitizedEnviron struct {
+	secrets []provider.Secret
+	login   bool
+}
+
+// Appends variable an entry (name=value) into the environ list.
+// VAULT_* variables are not populated into this list if this is not a login scenario.
+func (e *sanitizedEnviron) append(path string, key string, value string) {
+	envType, ok := sanitizeEnvmap[key]
+	if !ok || (e.login && envType.login) {
+		secret := provider.Secret{
+			Path:  path,
+			Value: value,
+		}
+
+		e.secrets = append(e.secrets, secret)
+	}
 }
 
 func NewProvider(config *Config) (provider.Provider, error) {
@@ -69,33 +91,45 @@ func NewProvider(config *Config) (provider.Provider, error) {
 
 	if config.DaemonMode {
 		secretRenewer = daemonSecretRenewer{client: client, sigs: config.Sigs, logger: config.Logger}
+		config.Logger.Info("Daemon mode enabled. Will renew secrets in the background.")
 	}
 
 	return &Provider{
-		client:         client,
-		injectorConfig: injectorConfig,
-		secretRenewer:  secretRenewer,
-		paths:          config.Paths,
-		revokeToken:    config.RevokeToken,
-		logger:         config.Logger,
+		isLogin:            config.Islogin,
+		client:             client,
+		injectorConfig:     injectorConfig,
+		secretRenewer:      secretRenewer,
+		passthroughEnvVars: config.PassthroughEnvVars,
+		paths:              config.Paths,
+		revokeToken:        config.RevokeToken,
+		logger:             config.Logger,
 	}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
 	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, p.logger)
 
-	var secrets []provider.Secret
-	inject := func(key, value string) {
-		secret := provider.Secret{
-			Path:  key,
-			Value: value,
+	// do not sanitize env vars specified in SECRET_INIT_PASSTHROUGH
+	for _, envVar := range p.passthroughEnvVars {
+		if trimmed := strings.TrimSpace(envVar); trimmed != "" {
+			delete(sanitizeEnvmap, trimmed)
 		}
-
-		secrets = append(secrets, secret)
 	}
 
+	sanitized := sanitizedEnviron{login: p.isLogin}
+
+	// inject secrets from VAULT_FROM_PATH
+	paths = append(paths, strings.Split(p.paths, ",")...)
+
 	for _, path := range paths {
-		err := secretInjector.InjectSecretsFromVaultPath(path, inject)
+		// Create a closure to capture the current path
+		injectClosure := func(path string) func(key, value string) {
+			return func(key, value string) {
+				sanitized.append(path, key, value)
+			}
+		}(path)
+
+		err := secretInjector.InjectSecretsFromVaultPath(path, injectClosure)
 		if err != nil {
 			return nil, fmt.Errorf("failed to inject secrets: %w", err)
 		}
@@ -112,5 +146,5 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 		p.client.Close()
 	}
 
-	return secrets, nil
+	return sanitized.secrets, nil
 }

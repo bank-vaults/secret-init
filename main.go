@@ -134,7 +134,7 @@ func main() {
 	}
 
 	if len(os.Args) == 1 {
-		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
+		logger.Error("no command is given, secret-init can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
 
 		os.Exit(1)
 	}
@@ -161,6 +161,7 @@ func main() {
 
 		os.Exit(1)
 	}
+
 	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
