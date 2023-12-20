@@ -66,13 +66,6 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	for envKey, path := range envs {
 		p, path := getProviderPath(path)
 		if p != nil {
-			if *p == vault.ProviderName {
-				// The injector function already utilized the key
-				secretsEnv := createSecretsEnvForVaultProvider(secrets)
-
-				return secretsEnv, nil
-			}
-
 			reversedEnvs[path] = envKey
 		}
 	}
@@ -106,7 +99,7 @@ func getProviderPath(path string) (*string, string) {
 	return nil, path
 }
 
-func createSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
+func CreateSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
 	var secretsEnv []string
 	for _, secret := range secrets {
 		key := secret.Path

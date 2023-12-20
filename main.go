@@ -163,11 +163,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
-	if err != nil {
-		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
+	var secretsEnv []string
+	if provider.GetProviderName() == vault.ProviderName {
+		// The Vault provider already returns the secrets with the environment variable key
+		secretsEnv = CreateSecretsEnvForVaultProvider(secrets)
+	} else {
+		secretsEnv, err = CreateSecretEnvsFrom(environ, secrets)
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
 
-		os.Exit(1)
+			os.Exit(1)
+		}
 	}
 
 	if delayExec > 0 {

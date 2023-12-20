@@ -19,7 +19,6 @@ import "context"
 // Provider is an interface for securely loading secrets based on environment variables.
 type Provider interface {
 	LoadSecrets(ctx context.Context, paths []string) ([]Secret, error)
-	//TODO(csatib02): Implement multi-provider support
 	GetProviderName() string
 }
 

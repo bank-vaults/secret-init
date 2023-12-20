@@ -121,11 +121,11 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 
 	if p.fromPath != "" {
 		err = secretInjector.InjectSecretsFromVaultPath(p.fromPath, inject)
-	}
-	if err != nil {
-		p.logger.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
+		if err != nil {
+			p.logger.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
 
-		return nil, err
+			return nil, err
+		}
 	}
 
 	if p.revokeToken {
