@@ -39,8 +39,14 @@ func GetEnvironMap() map[string]string {
 func ExtractPathsFromEnvs(envs map[string]string) []string {
 	var secretPaths []string
 
-	for _, path := range envs {
-		if p, path := getProviderPath(path); p != nil {
+	for envKey, path := range envs {
+		p, path := getProviderPath(path)
+		if p != nil {
+			// The injector function expects a map of key:value pairs
+			if *p == vault.ProviderName {
+				path = envKey + "=" + path
+			}
+
 			secretPaths = append(secretPaths, path)
 		}
 	}
@@ -54,7 +60,15 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	// by using the secret path
 	reversedEnvs := make(map[string]string)
 	for envKey, path := range envs {
-		if p, path := getProviderPath(path); p != nil {
+		p, path := getProviderPath(path)
+		if p != nil {
+			if *p == vault.ProviderName {
+				// The injector function already utilized the key
+				secretsEnv := createSecretsEnvForVaultProvider(secrets)
+
+				return secretsEnv, nil
+			}
+
 			reversedEnvs[path] = envKey
 		}
 	}
@@ -81,9 +95,21 @@ func getProviderPath(path string) (*string, string) {
 	}
 	if strings.HasPrefix(path, "vault:") {
 		var vaultProviderName = vault.ProviderName
-		// Do not remove prefix since it's processed by the provider
+		// Do not remove the prefix since it will be processed during injection
 		return &vaultProviderName, path
 	}
 
 	return nil, path
+}
+
+func createSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
+	var secretsEnv []string
+	for _, secret := range secrets {
+		key := secret.Path
+		value := secret.Value
+		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	return secretsEnv
+
 }

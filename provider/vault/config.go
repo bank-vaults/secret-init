@@ -31,20 +31,19 @@ const (
 )
 
 type Config struct {
-	Islogin              bool     `json:"islogin"`
-	Token                string   `json:"token"`
-	TokenFile            string   `json:"tokenFile"`
-	Role                 string   `json:"role"`
-	Path                 string   `json:"path"`
-	AuthMethod           string   `json:"authMethod"`
-	PassthroughEnvVars   []string `json:"passthroughEnvVars"`
-	TransitKeyID         string   `json:"transitKeyID"`
-	TransitPath          string   `json:"transitPath"`
-	TransitBatchSize     int      `json:"transitBatchSize"`
-	DaemonMode           bool     `json:"daemonMode"`
-	IgnoreMissingSecrets bool     `json:"ignoreMissingSecrets"`
-	Paths                string   `json:"paths"`
-	RevokeToken          bool     `json:"revokeToken"`
+	Islogin              bool   `json:"islogin"`
+	Token                string `json:"token"`
+	TokenFile            string `json:"tokenFile"`
+	Role                 string `json:"role"`
+	AuthPath             string `json:"authPath"`
+	AuthMethod           string `json:"authMethod"`
+	TransitKeyID         string `json:"transitKeyID"`
+	TransitPath          string `json:"transitPath"`
+	TransitBatchSize     int    `json:"transitBatchSize"`
+	DaemonMode           bool   `json:"daemonMode"`
+	IgnoreMissingSecrets bool   `json:"ignoreMissingSecrets"`
+	FromPath             string `json:"fromPath"`
+	RevokeToken          bool   `json:"revokeToken"`
 	Logger               *slog.Logger
 	Sigs                 chan os.Signal
 }
@@ -80,18 +79,15 @@ var sanitizeEnvmap = map[string]envType{
 	"VAULT_TRANSIT_PATH":           {login: false},
 	"VAULT_TRANSIT_BATCH_SIZE":     {login: false},
 	"VAULT_IGNORE_MISSING_SECRETS": {login: false},
-	"SECRET_INIT_PASSTHROUGH":      {login: false},
-	"VAULT_JSON_LOG":               {login: false},
-	"VAULT_LOG_LEVEL":              {login: false},
+	"VAULT_PASSTHROUGH":            {login: false},
 	"VAULT_REVOKE_TOKEN":           {login: false},
+	"VAULT_FROM_PATH":              {login: false},
 	"SECRET_INIT_DAEMON":           {login: false},
-	"SECRET_INIT_FROM_PATH":        {login: false},
-	"SECRET_INIT_DELAY":            {login: false},
 }
 
 func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 	var (
-		role, path, authMethod          string
+		role, authPath, authMethod      string
 		hasRole, hasPath, hasAuthMethod bool
 	)
 
@@ -116,7 +112,7 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		}
 		// will use role/path based authentication
 		role, hasRole = os.LookupEnv(EnvPrefix + "ROLE")
-		path, hasPath = os.LookupEnv(EnvPrefix + "PATH")
+		authPath, hasPath = os.LookupEnv(EnvPrefix + "PATH")
 		authMethod, hasAuthMethod = os.LookupEnv(EnvPrefix + "AUTH_METHOD")
 		if !hasRole || !hasPath || !hasAuthMethod {
 			logger.Error("Incomplete authentication configuration. Make sure VAULT_ROLE, VAULT_PATH, and VAULT_AUTH_METHOD are set.")
@@ -125,22 +121,28 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		}
 	}
 
-	// TODO(csatib02): make this generic, since it's not specific to vault
-	passthroughEnvVars := strings.Split(os.Getenv("SECRET_INIT_PASSTHROUGH"), ",")
+	passthroughEnvVars := strings.Split(os.Getenv(EnvPrefix+"PASSTHROUGH"), ",")
 	if isLogin {
 		_ = os.Setenv(EnvPrefix+"TOKEN", vaultLogin)
 		passthroughEnvVars = append(passthroughEnvVars, EnvPrefix+"TOKEN")
+	}
+
+	// do not sanitize env vars specified in VAULT_PASSTHROUGH
+	for _, envVar := range passthroughEnvVars {
+		if trimmed := strings.TrimSpace(envVar); trimmed != "" {
+			delete(sanitizeEnvmap, trimmed)
+		}
 	}
 
 	// injector configuration
 	transitKeyID := os.Getenv(EnvPrefix + "TRANSIT_KEY_ID")
 	transitPath := os.Getenv(EnvPrefix + "TRANSIT_PATH")
 	transitBatchSize := cast.ToInt(os.Getenv(EnvPrefix + "TRANSIT_BATCH_SIZE"))
-	daemonMode := cast.ToBool(os.Getenv(EnvPrefix + "DAEMON_MODE"))
+	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON_MODE"))
 	// Used both for reading secrets and transit encryption
 	ignoreMissingSecrets := cast.ToBool(os.Getenv(EnvPrefix + "IGNORE_MISSING_SECRETS"))
 
-	paths := os.Getenv(EnvPrefix + "FROM_PATH")
+	fromPath := os.Getenv(EnvPrefix + "FROM_PATH")
 	revokeToken := cast.ToBool(os.Getenv(EnvPrefix + "REVOKE_TOKEN"))
 
 	return &Config{
@@ -148,15 +150,14 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		Token:                vaultToken,
 		TokenFile:            tokenFile,
 		Role:                 role,
-		Path:                 path,
+		AuthPath:             authPath,
 		AuthMethod:           authMethod,
-		PassthroughEnvVars:   passthroughEnvVars,
 		TransitKeyID:         transitKeyID,
 		TransitPath:          transitPath,
 		TransitBatchSize:     transitBatchSize,
 		DaemonMode:           daemonMode,
 		IgnoreMissingSecrets: ignoreMissingSecrets,
-		Paths:                paths,
+		FromPath:             fromPath,
 		RevokeToken:          revokeToken,
 		Logger:               logger,
 		Sigs:                 sigs,

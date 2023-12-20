@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/bank-vaults/internal/injector"
@@ -30,45 +29,44 @@ import (
 const ProviderName = "vault"
 
 type Provider struct {
-	isLogin            bool
-	client             *vault.Client
-	injectorConfig     injector.Config
-	secretRenewer      injector.SecretRenewer
-	passthroughEnvVars []string
-	paths              string
-	revokeToken        bool
-	logger             *slog.Logger
+	isLogin        bool
+	client         *vault.Client
+	injectorConfig injector.Config
+	secretRenewer  injector.SecretRenewer
+	fromPath       string
+	revokeToken    bool
+	logger         *slog.Logger
 }
 
-type sanitizedEnviron struct {
+type sanitized struct {
 	secrets []provider.Secret
 	login   bool
 }
 
-// Appends variable an entry (name=value) into the environ list.
 // VAULT_* variables are not populated into this list if this is not a login scenario.
-func (e *sanitizedEnviron) append(path string, key string, value string) {
+func (s *sanitized) append(key string, value string) {
 	envType, ok := sanitizeEnvmap[key]
-	if !ok || (e.login && envType.login) {
+	if !ok || (s.login && envType.login) {
+		// Path here is actually the secrets key
 		secret := provider.Secret{
-			Path:  path,
+			Path:  key,
 			Value: value,
 		}
 
-		e.secrets = append(e.secrets, secret)
+		s.secrets = append(s.secrets, secret)
 	}
 }
 
 func NewProvider(config *Config) (provider.Provider, error) {
 	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{config.Logger})}
 	if config.TokenFile != "" {
-		clientOptions = append(clientOptions, vault.ClientToken(config.TokenFile))
+		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {
 		// use role/path based authentication
 		clientOptions = append(clientOptions,
-			vault.ClientRole(os.Getenv("VAULT_ROLE")),
-			vault.ClientAuthPath(os.Getenv("VAULT_PATH")),
-			vault.ClientAuthMethod(os.Getenv("VAULT_AUTH_METHOD")),
+			vault.ClientRole(config.Role),
+			vault.ClientAuthPath(config.AuthPath),
+			vault.ClientAuthMethod(config.AuthMethod),
 		)
 	}
 
@@ -95,44 +93,39 @@ func NewProvider(config *Config) (provider.Provider, error) {
 	}
 
 	return &Provider{
-		isLogin:            config.Islogin,
-		client:             client,
-		injectorConfig:     injectorConfig,
-		secretRenewer:      secretRenewer,
-		passthroughEnvVars: config.PassthroughEnvVars,
-		paths:              config.Paths,
-		revokeToken:        config.RevokeToken,
-		logger:             config.Logger,
+		isLogin:        config.Islogin,
+		client:         client,
+		injectorConfig: injectorConfig,
+		secretRenewer:  secretRenewer,
+		fromPath:       config.FromPath,
+		revokeToken:    config.RevokeToken,
+		logger:         config.Logger,
 	}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
-	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, p.logger)
+	sanitized := sanitized{login: p.isLogin}
+	vaultEnviron := parsePathsToMap(paths)
 
-	// do not sanitize env vars specified in SECRET_INIT_PASSTHROUGH
-	for _, envVar := range p.passthroughEnvVars {
-		if trimmed := strings.TrimSpace(envVar); trimmed != "" {
-			delete(sanitizeEnvmap, trimmed)
-		}
+	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, p.logger)
+	inject := func(key, value string) {
+		sanitized.append(key, value)
 	}
 
-	sanitized := sanitizedEnviron{login: p.isLogin}
+	err := secretInjector.InjectSecretsFromVault(vaultEnviron, inject)
+	if err != nil {
+		p.logger.Error(fmt.Errorf("failed to inject secrets from vault: %w", err).Error())
 
-	// inject secrets from VAULT_FROM_PATH
-	paths = append(paths, strings.Split(p.paths, ",")...)
+		return nil, err
+	}
 
-	for _, path := range paths {
-		// Create a closure to capture the current path
-		injectClosure := func(path string) func(key, value string) {
-			return func(key, value string) {
-				sanitized.append(path, key, value)
-			}
-		}(path)
+	if p.fromPath != "" {
+		err = secretInjector.InjectSecretsFromVaultPath(p.fromPath, inject)
+	}
+	if err != nil {
+		p.logger.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
 
-		err := secretInjector.InjectSecretsFromVaultPath(path, injectClosure)
-		if err != nil {
-			return nil, fmt.Errorf("failed to inject secrets: %w", err)
-		}
+		return nil, err
 	}
 
 	if p.revokeToken {
@@ -147,4 +140,17 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	}
 
 	return sanitized.secrets, nil
+}
+
+func parsePathsToMap(paths []string) map[string]string {
+	vaultEnviron := make(map[string]string)
+
+	for _, path := range paths {
+		split := strings.SplitN(path, "=", 2)
+		key := split[0]
+		value := split[1]
+		vaultEnviron[key] = value
+	}
+
+	return vaultEnviron
 }

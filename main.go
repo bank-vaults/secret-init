@@ -124,6 +124,8 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
+	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON"))
+	delayExec := cast.ToDuration(os.Getenv("SECRET_INIT_DELAY"))
 	sigs := make(chan os.Signal, 1)
 
 	provider, err := NewProvider(os.Getenv("PROVIDER"), logger, sigs)
@@ -138,9 +140,6 @@ func main() {
 
 		os.Exit(1)
 	}
-
-	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON"))
-	delayExec := cast.ToDuration(os.Getenv("SECRET_INIT_DELAY"))
 
 	entrypointCmd := os.Args[1:]
 
