@@ -63,3 +63,7 @@ func (p *Provider) getSecretFromFile(path string) (string, error) {
 
 	return string(content), nil
 }
+
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}

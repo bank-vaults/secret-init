@@ -154,3 +154,7 @@ func parsePathsToMap(paths []string) map[string]string {
 
 	return vaultEnviron
 }
+
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}

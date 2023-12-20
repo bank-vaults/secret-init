@@ -36,8 +36,9 @@ func GetEnvironMap() map[string]string {
 	return environ
 }
 
-func ExtractPathsFromEnvs(envs map[string]string) []string {
+func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string {
 	var secretPaths []string
+	currentProvider := providerName
 
 	for envKey, path := range envs {
 		p, path := getProviderPath(path)
@@ -47,7 +48,10 @@ func ExtractPathsFromEnvs(envs map[string]string) []string {
 				path = envKey + "=" + path
 			}
 
-			secretPaths = append(secretPaths, path)
+			// TODO(csatib02): Implement multi-provider support
+			if *p == currentProvider {
+				secretPaths = append(secretPaths, path)
+			}
 		}
 	}
 

@@ -151,7 +151,9 @@ func main() {
 	}
 
 	environ := GetEnvironMap()
-	paths := ExtractPathsFromEnvs(environ)
+
+	//TODO(csatib02): Implement multi-provider support
+	paths := ExtractPathsFromEnvs(environ, provider.GetProviderName())
 
 	ctx := context.Background()
 	secrets, err := provider.LoadSecrets(ctx, paths)
