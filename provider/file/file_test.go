@@ -54,10 +54,10 @@ func TestNewProvider(t *testing.T) {
 
 func TestLoadSecrets(t *testing.T) {
 	tests := []struct {
-		name     string
-		paths    []string
-		wantErr  bool
-		wantData []provider.Secret
+		name        string
+		paths       []string
+		wantErr     bool
+		wantSecrets []provider.Secret
 	}{
 		{
 			name: "Load secrets successfully",
@@ -67,7 +67,7 @@ func TestLoadSecrets(t *testing.T) {
 				"test/secrets/awsid.txt",
 			},
 			wantErr: false,
-			wantData: []provider.Secret{
+			wantSecrets: []provider.Secret{
 				{Path: "test/secrets/sqlpass.txt", Value: "3xtr3ms3cr3t"},
 				{Path: "test/secrets/awsaccess.txt", Value: "s3cr3t"},
 				{Path: "test/secrets/awsid.txt", Value: "secretId"},
@@ -80,8 +80,8 @@ func TestLoadSecrets(t *testing.T) {
 				"test/secrets/mistake/awsaccess.txt",
 				"test/secrets/mistake/awsid.txt",
 			},
-			wantErr:  true,
-			wantData: nil,
+			wantErr:     true,
+			wantSecrets: nil,
 		},
 	}
 
@@ -97,7 +97,7 @@ func TestLoadSecrets(t *testing.T) {
 			secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
 
 			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-			assert.Equal(t, ttp.wantData, secrets, "Unexpected secrets")
+			assert.Equal(t, ttp.wantSecrets, secrets, "Unexpected secrets")
 		})
 	}
 }

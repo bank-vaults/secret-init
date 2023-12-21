@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/bank-vaults/internal/injector"
@@ -57,8 +58,8 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config) (provider.Provider, error) {
-	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{config.Logger})}
+func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
+	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{logger})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {
@@ -72,7 +73,7 @@ func NewProvider(config *Config) (provider.Provider, error) {
 
 	client, err := vault.NewClientWithOptions(clientOptions...)
 	if err != nil {
-		config.Logger.Error(fmt.Errorf("failed to create vault client: %w", err).Error())
+		logger.Error(fmt.Errorf("failed to create vault client: %w", err).Error())
 
 		return nil, err
 	}
@@ -88,8 +89,8 @@ func NewProvider(config *Config) (provider.Provider, error) {
 	var secretRenewer injector.SecretRenewer
 
 	if config.DaemonMode {
-		secretRenewer = daemonSecretRenewer{client: client, sigs: config.Sigs, logger: config.Logger}
-		config.Logger.Info("Daemon mode enabled. Will renew secrets in the background.")
+		secretRenewer = daemonSecretRenewer{client: client, sigs: sigs, logger: logger}
+		logger.Info("Daemon mode enabled. Will renew secrets in the background.")
 	}
 
 	return &Provider{
@@ -99,7 +100,7 @@ func NewProvider(config *Config) (provider.Provider, error) {
 		secretRenewer:  secretRenewer,
 		fromPath:       config.FromPath,
 		revokeToken:    config.RevokeToken,
-		logger:         config.Logger,
+		logger:         logger,
 	}, nil
 }
 

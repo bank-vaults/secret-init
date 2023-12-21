@@ -39,7 +39,7 @@ import (
 func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		config := file.NewConfig(logger)
+		config := file.NewConfig()
 		provider, err := file.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create file provider: %w", err)
@@ -47,12 +47,12 @@ func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) 
 
 		return provider, nil
 	case vault.ProviderName:
-		config, err := vault.NewConfig(logger, sigs)
+		config, err := vault.NewConfig()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
 
-		provider, err := vault.NewProvider(config)
+		provider, err := vault.NewProvider(config, logger, sigs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}

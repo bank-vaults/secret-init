@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,9 +9,6 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	// mock logger, sigs, and tokenfile
-	logger := slog.Default()
-	sigs := make(chan os.Signal, 1)
 	tokenFile := newTokenFile(t)
 	defer os.Remove(tokenFile)
 
@@ -25,15 +21,28 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				"VAULT_TOKEN":      vaultLogin,
-				"VAULT_TOKEN_FILE": tokenFile,
+				"VAULT_TOKEN":                  vaultLogin,
+				"VAULT_TOKEN_FILE":             tokenFile,
+				"VAULT_PASSTHROUGH":            "VAULT_AGENT_ADDR, VAULT_CLI_NO_COLOR",
+				"VAULT_TRANSIT_KEY_ID":         "test-key",
+				"VAULT_TRANSIT_PATH":           "transit",
+				"VAULT_TRANSIT_BATCH_SIZE":     "10",
+				"SECRET_INIT_DAEMON":           "true",
+				"VAULT_IGNORE_MISSING_SECRETS": "true",
+				"VAULT_REVOKE_TOKEN":           "true",
+				"VAULT_FROM_PATH":              "secret/data/test",
 			},
 			wantConfig: &Config{
-				Islogin:   true,
-				Token:     "root",
-				TokenFile: tokenFile,
-				Logger:    logger,
-				Sigs:      sigs,
+				Islogin:              true,
+				Token:                "root",
+				TokenFile:            tokenFile,
+				TransitKeyID:         "test-key",
+				TransitPath:          "transit",
+				TransitBatchSize:     10,
+				DaemonMode:           true,
+				IgnoreMissingSecrets: true,
+				FromPath:             "secret/data/test",
+				RevokeToken:          true,
 			},
 			wantErr: false,
 		},
@@ -51,8 +60,6 @@ func TestConfig(t *testing.T) {
 				Role:       "test-app-role",
 				AuthPath:   "auth/approle/test/login",
 				AuthMethod: "test-approle",
-				Logger:     logger,
-				Sigs:       sigs,
 			},
 			wantErr: false,
 		},
@@ -65,7 +72,7 @@ func TestConfig(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name: "Invalid login configuration missing role/path credentials",
+			name: "Invalid login configuration missing role - path credentials",
 			env: map[string]string{
 				"VAULT_PATH":        "auth/approle/test/login",
 				"VAULT_AUTH_METHOD": "test-approle",
@@ -82,7 +89,7 @@ func TestConfig(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 
-			config, err := NewConfig(logger, sigs)
+			config, err := NewConfig()
 
 			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
 			assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
@@ -106,5 +113,6 @@ func newTokenFile(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("Failed to write to a temporary token file: %v", err)
 	}
+
 	return tokenFile.Name()
 }

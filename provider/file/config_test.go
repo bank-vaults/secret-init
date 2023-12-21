@@ -15,7 +15,6 @@
 package file
 
 import (
-	"log/slog"
 	"os"
 	"testing"
 
@@ -48,7 +47,7 @@ func TestConfig(t *testing.T) {
 			for envKey, envVal := range ttp.env {
 				os.Setenv(envKey, envVal)
 			}
-			config := NewConfig(slog.Default())
+			config := NewConfig()
 
 			assert.Equal(t, ttp.wantMountPath, config.MountPath, "Unexpected mount path")
 		})

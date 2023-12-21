@@ -15,8 +15,7 @@
 package vault
 
 import (
-	"errors"
-	"log/slog"
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,7 +23,8 @@ import (
 )
 
 const (
-	EnvPrefix = "VAULT_"
+	EnvPrefix           = "VAULT_"
+	SecretInitDaemonEnv = "SECRET_INIT_DAEMON"
 	// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
 	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"
@@ -44,8 +44,6 @@ type Config struct {
 	IgnoreMissingSecrets bool   `json:"ignoreMissingSecrets"`
 	FromPath             string `json:"fromPath"`
 	RevokeToken          bool   `json:"revokeToken"`
-	Logger               *slog.Logger
-	Sigs                 chan os.Signal
 }
 
 type envType struct {
@@ -85,7 +83,7 @@ var sanitizeEnvmap = map[string]envType{
 	"SECRET_INIT_DAEMON":           {login: false},
 }
 
-func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
+func NewConfig() (*Config, error) {
 	var (
 		role, authPath, authMethod      string
 		hasRole, hasPath, hasAuthMethod bool
@@ -102,9 +100,7 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		if b, err := os.ReadFile(tokenFile); err == nil {
 			vaultToken = string(b)
 		} else {
-			logger.Error("could not read vault token file", slog.String("file", tokenFile))
-
-			return nil, err
+			return nil, fmt.Errorf("failed to read token file: %w", err)
 		}
 	} else {
 		if isLogin {
@@ -115,9 +111,8 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		authPath, hasPath = os.LookupEnv(EnvPrefix + "PATH")
 		authMethod, hasAuthMethod = os.LookupEnv(EnvPrefix + "AUTH_METHOD")
 		if !hasRole || !hasPath || !hasAuthMethod {
-			logger.Error("Incomplete authentication configuration. Make sure VAULT_ROLE, VAULT_PATH, and VAULT_AUTH_METHOD are set.")
-
-			return nil, errors.New("incomplete authentication configuration")
+			return nil, fmt.Errorf("incomplete authentication configuration %s, %s, and %s",
+				"VAULT_ROLE", "VAULT_PATH", "VAULT_AUTH_METHOD")
 		}
 	}
 
@@ -138,7 +133,7 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 	transitKeyID := os.Getenv(EnvPrefix + "TRANSIT_KEY_ID")
 	transitPath := os.Getenv(EnvPrefix + "TRANSIT_PATH")
 	transitBatchSize := cast.ToInt(os.Getenv(EnvPrefix + "TRANSIT_BATCH_SIZE"))
-	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON_MODE"))
+	daemonMode := cast.ToBool(os.Getenv(SecretInitDaemonEnv))
 	// Used both for reading secrets and transit encryption
 	ignoreMissingSecrets := cast.ToBool(os.Getenv(EnvPrefix + "IGNORE_MISSING_SECRETS"))
 
@@ -159,7 +154,5 @@ func NewConfig(logger *slog.Logger, sigs chan os.Signal) (*Config, error) {
 		IgnoreMissingSecrets: ignoreMissingSecrets,
 		FromPath:             fromPath,
 		RevokeToken:          revokeToken,
-		Logger:               logger,
-		Sigs:                 sigs,
 	}, nil
 }
