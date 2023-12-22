@@ -12,18 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package provider
+package file
 
-import "context"
+import (
+	"fmt"
+	"os"
+)
 
-// Provider is an interface for securely loading secrets based on environment variables.
-type Provider interface {
-	LoadSecrets(ctx context.Context, paths []string) ([]Secret, error)
-	GetProviderName() string
+const (
+	EnvPrefix        = "FILE_"
+	DefaultMountPath = "/"
+)
+
+type Config struct {
+	MountPath string `json:"mountPath"`
 }
 
-// Secret holds Provider-specific secret data.
-type Secret struct {
-	Path  string
-	Value string
+func NewConfig() *Config {
+	mountPath, ok := os.LookupEnv(EnvPrefix + "MOUNT_PATH")
+	if !ok {
+		fmt.Printf("Mount path not provided. Using default. Default Mount Path: %s\n", DefaultMountPath)
+
+		mountPath = DefaultMountPath
+	}
+
+	return &Config{MountPath: mountPath}
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
+	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
 func GetEnvironMap() map[string]string {
@@ -35,12 +36,22 @@ func GetEnvironMap() map[string]string {
 	return environ
 }
 
-func ExtractPathsFromEnvs(envs map[string]string) []string {
+func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string {
 	var secretPaths []string
+	currentProvider := providerName
 
-	for _, path := range envs {
-		if p, path := getProviderPath(path); p != nil {
-			secretPaths = append(secretPaths, path)
+	for envKey, path := range envs {
+		p, path := getProviderPath(path)
+		if p != nil {
+			// The injector function expects a map of key:value pairs
+			if *p == vault.ProviderName {
+				path = envKey + "=" + path
+			}
+
+			// TODO(csatib02): Implement multi-provider support
+			if *p == currentProvider {
+				secretPaths = append(secretPaths, path)
+			}
 		}
 	}
 
@@ -53,7 +64,8 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	// by using the secret path
 	reversedEnvs := make(map[string]string)
 	for envKey, path := range envs {
-		if p, path := getProviderPath(path); p != nil {
+		p, path := getProviderPath(path)
+		if p != nil {
 			reversedEnvs[path] = envKey
 		}
 	}
@@ -78,6 +90,23 @@ func getProviderPath(path string) (*string, string) {
 		var fileProviderName = file.ProviderName
 		return &fileProviderName, strings.TrimPrefix(path, "file:")
 	}
+	if strings.HasPrefix(path, "vault:") {
+		var vaultProviderName = vault.ProviderName
+		// Do not remove the prefix since it will be processed during injection
+		return &vaultProviderName, path
+	}
 
 	return nil, path
+}
+
+func CreateSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
+	var secretsEnv []string
+	for _, secret := range secrets {
+		key := secret.Path
+		value := secret.Value
+		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	return secretsEnv
+
 }

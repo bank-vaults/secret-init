@@ -33,14 +33,28 @@ import (
 
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
+	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func NewProvider(providerName string) (provider.Provider, error) {
+func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		provider, err := file.NewProvider(os.DirFS("/"))
+		config := file.NewConfig()
+		provider, err := file.NewProvider(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create file provider: %w", err)
+		}
+
+		return provider, nil
+	case vault.ProviderName:
+		config, err := vault.NewConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault config: %w", err)
+		}
+
+		provider, err := vault.NewProvider(config, logger, sigs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
 
 		return provider, nil
@@ -55,7 +69,7 @@ func main() {
 	{
 		var level slog.Level
 
-		err := level.UnmarshalText([]byte(os.Getenv("VAULT_LOG_LEVEL")))
+		err := level.UnmarshalText([]byte(os.Getenv("SECRET_INIT_LOG_LEVEL")))
 		if err != nil { // Silently fall back to info level
 			level = slog.LevelInfo
 		}
@@ -68,7 +82,7 @@ func main() {
 
 		router := slogmulti.Router()
 
-		if cast.ToBool(os.Getenv("VAULT_JSON_LOG")) {
+		if cast.ToBool(os.Getenv("SECRET_INIT_JSON_LOG")) {
 			// Send logs with level higher than warning to stderr
 			router = router.Add(
 				slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
@@ -94,7 +108,7 @@ func main() {
 			)
 		}
 
-		if logServerAddr := os.Getenv("VAULT_ENV_LOG_SERVER"); logServerAddr != "" {
+		if logServerAddr := os.Getenv("SECRET_INIT_LOG_SERVER"); logServerAddr != "" {
 			writer, err := net.Dial("udp", logServerAddr)
 
 			// We silently ignore syslog connection errors for the lack of a better solution
@@ -110,7 +124,11 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	provider, err := NewProvider(os.Getenv("PROVIDER"))
+	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON"))
+	delayExec := cast.ToDuration(os.Getenv("SECRET_INIT_DELAY"))
+	sigs := make(chan os.Signal, 1)
+
+	provider, err := NewProvider(os.Getenv("PROVIDER"), logger, sigs)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 
@@ -118,13 +136,10 @@ func main() {
 	}
 
 	if len(os.Args) == 1 {
-		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
+		logger.Error("no command is given, secret-init can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
 
 		os.Exit(1)
 	}
-
-	daemonMode := cast.ToBool(os.Getenv("VAULT_ENV_DAEMON"))
-	delayExec := cast.ToDuration(os.Getenv("VAULT_ENV_DELAY"))
 
 	entrypointCmd := os.Args[1:]
 
@@ -136,7 +151,9 @@ func main() {
 	}
 
 	environ := GetEnvironMap()
-	paths := ExtractPathsFromEnvs(environ)
+
+	//TODO(csatib02): Implement multi-provider support
+	paths := ExtractPathsFromEnvs(environ, provider.GetProviderName())
 
 	ctx := context.Background()
 	secrets, err := provider.LoadSecrets(ctx, paths)
@@ -145,14 +162,19 @@ func main() {
 
 		os.Exit(1)
 	}
-	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
-	if err != nil {
-		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
 
-		os.Exit(1)
+	var secretsEnv []string
+	if provider.GetProviderName() == vault.ProviderName {
+		// The Vault provider already returns the secrets with the environment variable key
+		secretsEnv = CreateSecretsEnvForVaultProvider(secrets)
+	} else {
+		secretsEnv, err = CreateSecretEnvsFrom(environ, secrets)
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
+
+			os.Exit(1)
+		}
 	}
-
-	sigs := make(chan os.Signal, 1)
 
 	if delayExec > 0 {
 		logger.Info(fmt.Sprintf("sleeping for %s...", delayExec))
