@@ -100,7 +100,7 @@ func NewConfig() (*Config, error) {
 		if b, err := os.ReadFile(tokenFile); err == nil {
 			vaultToken = string(b)
 		} else {
-			return nil, fmt.Errorf("failed to read token file: %w", err)
+			return nil, fmt.Errorf("failed to read token file %s: %w", tokenFile, err)
 		}
 	} else {
 		if isLogin {

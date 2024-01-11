@@ -15,25 +15,24 @@
 package file
 
 import (
-	"fmt"
+	"log/slog"
 	"os"
 )
 
 const (
 	EnvPrefix        = "FILE_"
-	DefaultMountPath = "/"
+	defaultMountPath = "/"
 )
 
 type Config struct {
 	MountPath string `json:"mountPath"`
 }
 
-func NewConfig() *Config {
+func NewConfig(logger *slog.Logger) *Config {
 	mountPath, ok := os.LookupEnv(EnvPrefix + "MOUNT_PATH")
 	if !ok {
-		fmt.Printf("Mount path not provided. Using default. Default Mount Path: %s\n", DefaultMountPath)
-
-		mountPath = DefaultMountPath
+		logger.Warn("Mount path not provided. Using default.", slog.String("Default Mount Path", defaultMountPath))
+		mountPath = defaultMountPath
 	}
 
 	return &Config{MountPath: mountPath}

@@ -35,16 +35,16 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				"VAULT_TOKEN":                  vaultLogin,
-				"VAULT_TOKEN_FILE":             tokenFile,
-				"VAULT_PASSTHROUGH":            "VAULT_AGENT_ADDR, VAULT_CLI_NO_COLOR",
-				"VAULT_TRANSIT_KEY_ID":         "test-key",
-				"VAULT_TRANSIT_PATH":           "transit",
-				"VAULT_TRANSIT_BATCH_SIZE":     "10",
-				"SECRET_INIT_DAEMON":           "true",
-				"VAULT_IGNORE_MISSING_SECRETS": "true",
-				"VAULT_REVOKE_TOKEN":           "true",
-				"VAULT_FROM_PATH":              "secret/data/test",
+				EnvPrefix + "TOKEN":                  vaultLogin,
+				EnvPrefix + "TOKEN_FILE":             tokenFile,
+				EnvPrefix + "PASSTHROUGH":            EnvPrefix + "AGENT_ADDR, " + EnvPrefix + "CLI_NO_COLOR",
+				EnvPrefix + "TRANSIT_KEY_ID":         "test-key",
+				EnvPrefix + "TRANSIT_PATH":           "transit",
+				EnvPrefix + "TRANSIT_BATCH_SIZE":     "10",
+				SecretInitDaemonEnv:                  "true",
+				EnvPrefix + "IGNORE_MISSING_SECRETS": "true",
+				EnvPrefix + "REVOKE_TOKEN":           "true",
+				EnvPrefix + "FROM_PATH":              "secret/data/test",
 			},
 			wantConfig: &Config{
 				Islogin:              true,
@@ -63,10 +63,10 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Role and Path",
 			env: map[string]string{
-				"VAULT_TOKEN":       vaultLogin,
-				"VAULT_ROLE":        "test-app-role",
-				"VAULT_PATH":        "auth/approle/test/login",
-				"VAULT_AUTH_METHOD": "test-approle",
+				EnvPrefix + "TOKEN":       vaultLogin,
+				EnvPrefix + "ROLE":        "test-app-role",
+				EnvPrefix + "PATH":        "auth/approle/test/login",
+				EnvPrefix + "AUTH_METHOD": "test-approle",
 			},
 			wantConfig: &Config{
 				Islogin:    true,
@@ -80,7 +80,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration missing token file",
 			env: map[string]string{
-				"VAULT_TOKEN_FILE": tokenFile + "/invalid",
+				EnvPrefix + "TOKEN_FILE": tokenFile + "/invalid",
 			},
 			wantConfig: nil,
 			wantErr:    true,
@@ -88,8 +88,8 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration missing role - path credentials",
 			env: map[string]string{
-				"VAULT_PATH":        "auth/approle/test/login",
-				"VAULT_AUTH_METHOD": "test-approle",
+				EnvPrefix + "PATH":        "auth/approle/test/login",
+				EnvPrefix + "AUTH_METHOD": "test-approle",
 			},
 			wantConfig: nil,
 			wantErr:    true,

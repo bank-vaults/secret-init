@@ -39,7 +39,7 @@ import (
 func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		config := file.NewConfig()
+		config := file.NewConfig(logger)
 		provider, err := file.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create file provider: %w", err)

@@ -42,16 +42,14 @@ func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string 
 
 	for envKey, path := range envs {
 		p, path := getProviderPath(path)
-		if p != nil {
+		// TODO(csatib02): Implement multi-provider support
+		if p == currentProvider {
 			// The injector function expects a map of key:value pairs
-			if *p == vault.ProviderName {
+			if p == vault.ProviderName {
 				path = envKey + "=" + path
 			}
 
-			// TODO(csatib02): Implement multi-provider support
-			if *p == currentProvider {
-				secretPaths = append(secretPaths, path)
-			}
+			secretPaths = append(secretPaths, path)
 		}
 	}
 
@@ -65,7 +63,7 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	reversedEnvs := make(map[string]string)
 	for envKey, path := range envs {
 		p, path := getProviderPath(path)
-		if p != nil {
+		if p != "" {
 			reversedEnvs[path] = envKey
 		}
 	}
@@ -85,18 +83,18 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 }
 
 // Returns the detected provider name and path with removed prefix
-func getProviderPath(path string) (*string, string) {
+func getProviderPath(path string) (string, string) {
 	if strings.HasPrefix(path, "file:") {
 		var fileProviderName = file.ProviderName
-		return &fileProviderName, strings.TrimPrefix(path, "file:")
+		return fileProviderName, strings.TrimPrefix(path, "file:")
 	}
 	if strings.HasPrefix(path, "vault:") {
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
-		return &vaultProviderName, path
+		return vaultProviderName, path
 	}
 
-	return nil, path
+	return "", path
 }
 
 func CreateSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
