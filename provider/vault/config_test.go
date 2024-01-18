@@ -85,12 +85,19 @@ func TestConfig(t *testing.T) {
 			err: fmt.Errorf("failed to read token file " + tokenFile + "/invalid: open " + tokenFile + "/invalid: not a directory"),
 		},
 		{
-			name: "Invalid login configuration missing role - path credentials",
+			name: "Invalid login configuration using role/path auth, missing role",
 			env: map[string]string{
 				common.VaultPath:       "auth/approle/test/login",
-				common.VaultAuthMethod: "test-approle",
+				common.VaultAuthMethod: "k8s",
 			},
-			err: fmt.Errorf("incomplete authentication configuration VAULT_ROLE, VAULT_PATH, and VAULT_AUTH_METHOD"),
+			err: fmt.Errorf("incomplete authentication configuration: VAULT_ROLE missing"),
+		},
+		{
+			name: "Invalid login configuration using role/path auth, missing path and auth method",
+			env: map[string]string{
+				common.VaultRole: "test-app-role",
+			},
+			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH, VAULT_AUTH_METHOD missing"),
 		},
 	}
 

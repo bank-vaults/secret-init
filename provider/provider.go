@@ -14,7 +14,10 @@
 
 package provider
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // Provider is an interface for securely loading secrets based on environment variables.
 type Provider interface {
@@ -26,4 +29,8 @@ type Provider interface {
 type Secret struct {
 	Path  string
 	Value string
+}
+
+func (s *Secret) Format() string {
+	return fmt.Sprintf("%s=%s", s.Path, s.Value)
 }

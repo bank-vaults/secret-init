@@ -35,9 +35,16 @@ func TestNewProvider(t *testing.T) {
 		{
 			name: "Valid config",
 			config: &Config{
-				MountPath: "test/secrets",
+				MountPath: t.TempDir(),
 			},
 			wantType: true,
+		},
+		{
+			name: "Invalid config",
+			config: &Config{
+				MountPath: "test/secrets",
+			},
+			err: fmt.Errorf("directory does not exist: test/secrets"),
 		},
 	}
 

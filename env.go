@@ -38,12 +38,11 @@ func GetEnvironMap() map[string]string {
 
 func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string {
 	var secretPaths []string
-	currentProvider := providerName
 
 	for envKey, path := range envs {
 		p, path := getProviderPath(path)
 		// TODO(csatib02): Implement multi-provider support
-		if p == currentProvider {
+		if p == providerName {
 			// The injector function expects a map of key:value pairs
 			if p == vault.ProviderName {
 				path = envKey + "=" + path
@@ -71,12 +70,13 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	var secretsEnv []string
 	for _, secret := range secrets {
 		path := secret.Path
-		value := secret.Value
 		key, ok := reversedEnvs[path]
 		if !ok {
 			return nil, fmt.Errorf("failed to find environment variable key for secret path: %s", path)
 		}
-		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, value))
+		secret.Path = key
+
+		secretsEnv = append(secretsEnv, secret.Format())
 	}
 
 	return secretsEnv, nil
@@ -100,11 +100,8 @@ func getProviderPath(path string) (string, string) {
 func CreateSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
 	var secretsEnv []string
 	for _, secret := range secrets {
-		key := secret.Path
-		value := secret.Value
-		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, value))
+		secretsEnv = append(secretsEnv, secret.Format())
 	}
 
 	return secretsEnv
-
 }

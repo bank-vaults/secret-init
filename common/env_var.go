@@ -14,6 +14,7 @@
 
 package common
 
+// Constants related to configuration keys for secret-init and its providers.
 const (
 	// main
 	SecretInitLogLevel  = "SECRET_INIT_LOG_LEVEL"

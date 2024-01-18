@@ -95,11 +95,11 @@ func NewConfig() (*Config, error) {
 	tokenFile, ok := os.LookupEnv(common.VaultTokenFile)
 	if ok {
 		// load token from vault-agent .vault-token or injected webhook
-		if b, err := os.ReadFile(tokenFile); err == nil {
-			vaultToken = string(b)
-		} else {
+		tokenFileContent, err := os.ReadFile(tokenFile)
+		if err != nil {
 			return nil, fmt.Errorf("failed to read token file %s: %w", tokenFile, err)
 		}
+		vaultToken = string(tokenFileContent)
 	} else {
 		if isLogin {
 			_ = os.Unsetenv(common.VaultToken)
@@ -108,9 +108,20 @@ func NewConfig() (*Config, error) {
 		role, hasRole = os.LookupEnv(common.VaultRole)
 		authPath, hasPath = os.LookupEnv(common.VaultPath)
 		authMethod, hasAuthMethod = os.LookupEnv(common.VaultAuthMethod)
-		if !hasRole || !hasPath || !hasAuthMethod {
-			return nil, fmt.Errorf("incomplete authentication configuration %s, %s, and %s",
-				common.VaultRole, common.VaultPath, common.VaultAuthMethod)
+		missingConfig := make([]string, 0)
+
+		if !hasRole {
+			missingConfig = append(missingConfig, common.VaultRole)
+		}
+		if !hasPath {
+			missingConfig = append(missingConfig, common.VaultPath)
+		}
+		if !hasAuthMethod {
+			missingConfig = append(missingConfig, common.VaultAuthMethod)
+		}
+
+		if len(missingConfig) > 0 {
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", strings.Join(missingConfig, ", "))
 		}
 	}
 
@@ -127,30 +138,21 @@ func NewConfig() (*Config, error) {
 		}
 	}
 
-	// injector configuration
-	transitKeyID := os.Getenv(common.VaultTransitKeyID)
-	transitPath := os.Getenv(common.VaultTransitPath)
-	transitBatchSize := cast.ToInt(os.Getenv(common.VaultTransitBatchSize))
-	daemonMode := cast.ToBool(os.Getenv(common.SecretInitDaemon))
-	// Used both for reading secrets and transit encryption
-	ignoreMissingSecrets := cast.ToBool(os.Getenv(common.VaultIgnoreMissingSecrets))
-
-	fromPath := os.Getenv(common.VaultFromPath)
-	revokeToken := cast.ToBool(os.Getenv(common.VaultRevokeToken))
-
 	return &Config{
-		IsLogin:              isLogin,
-		Token:                vaultToken,
-		TokenFile:            tokenFile,
-		Role:                 role,
-		AuthPath:             authPath,
-		AuthMethod:           authMethod,
-		TransitKeyID:         transitKeyID,
-		TransitPath:          transitPath,
-		TransitBatchSize:     transitBatchSize,
-		DaemonMode:           daemonMode,
-		IgnoreMissingSecrets: ignoreMissingSecrets,
-		FromPath:             fromPath,
-		RevokeToken:          revokeToken,
+		IsLogin:    isLogin,
+		Token:      vaultToken,
+		TokenFile:  tokenFile,
+		Role:       role,
+		AuthPath:   authPath,
+		AuthMethod: authMethod,
+		// injector configuration
+		TransitKeyID:     os.Getenv(common.VaultTransitKeyID),
+		TransitPath:      os.Getenv(common.VaultTransitPath),
+		TransitBatchSize: cast.ToInt(os.Getenv(common.VaultTransitBatchSize)),
+		DaemonMode:       cast.ToBool(os.Getenv(common.SecretInitDaemon)),
+		// Used both for reading secrets and transit encryption
+		IgnoreMissingSecrets: cast.ToBool(os.Getenv(common.VaultIgnoreMissingSecrets)),
+		FromPath:             os.Getenv(common.VaultFromPath),
+		RevokeToken:          cast.ToBool(os.Getenv(common.VaultRevokeToken)),
 	}, nil
 }

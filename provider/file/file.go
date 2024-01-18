@@ -31,9 +31,15 @@ type Provider struct {
 }
 
 func NewProvider(config *Config) (provider.Provider, error) {
-	fs := os.DirFS(config.MountPath)
+	// Check if the directory exists
+	_, err := os.Stat(config.MountPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("directory does not exist: %s", config.MountPath)
+		}
+	}
 
-	return &Provider{fs: fs}, nil
+	return &Provider{fs: os.DirFS(config.MountPath)}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {

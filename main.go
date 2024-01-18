@@ -45,8 +45,8 @@ func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create file provider: %w", err)
 		}
-
 		return provider, nil
+
 	case vault.ProviderName:
 		config, err := vault.NewConfig()
 		if err != nil {
@@ -57,7 +57,6 @@ func NewProvider(providerName string, logger *slog.Logger, sigs chan os.Signal) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
-
 		return provider, nil
 
 	default:
@@ -166,7 +165,7 @@ func main() {
 
 	var secretsEnv []string
 	if provider.GetProviderName() == vault.ProviderName {
-		// The Vault provider already returns the secrets with the environment variable key
+		// The Vault provider already returns the secrets with the environment variable keys
 		secretsEnv = CreateSecretsEnvForVaultProvider(secrets)
 	} else {
 		secretsEnv, err = CreateSecretEnvsFrom(environ, secrets)
