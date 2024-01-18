@@ -20,15 +20,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cast"
+
+	"github.com/bank-vaults/secret-init/common"
 )
 
-const (
-	EnvPrefix           = "VAULT_"
-	SecretInitDaemonEnv = "SECRET_INIT_DAEMON"
-	// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
-	// which was acquired during the vault client initialization.
-	vaultLogin = "vault:login"
-)
+// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
+// which was acquired during the vault client initialization.
+const vaultLogin = "vault:login"
 
 type Config struct {
 	Islogin              bool   `json:"islogin"`
@@ -51,36 +49,36 @@ type envType struct {
 }
 
 var sanitizeEnvmap = map[string]envType{
-	"VAULT_TOKEN":                  {login: true},
-	"VAULT_ADDR":                   {login: true},
-	"VAULT_AGENT_ADDR":             {login: true},
-	"VAULT_CACERT":                 {login: true},
-	"VAULT_CAPATH":                 {login: true},
-	"VAULT_CLIENT_CERT":            {login: true},
-	"VAULT_CLIENT_KEY":             {login: true},
-	"VAULT_CLIENT_TIMEOUT":         {login: true},
-	"VAULT_SRV_LOOKUP":             {login: true},
-	"VAULT_SKIP_VERIFY":            {login: true},
-	"VAULT_NAMESPACE":              {login: true},
-	"VAULT_TLS_SERVER_NAME":        {login: true},
-	"VAULT_WRAP_TTL":               {login: true},
-	"VAULT_MFA":                    {login: true},
-	"VAULT_MAX_RETRIES":            {login: true},
-	"VAULT_CLUSTER_ADDR":           {login: false},
-	"VAULT_REDIRECT_ADDR":          {login: false},
-	"VAULT_CLI_NO_COLOR":           {login: false},
-	"VAULT_RATE_LIMIT":             {login: false},
-	"VAULT_ROLE":                   {login: false},
-	"VAULT_PATH":                   {login: false},
-	"VAULT_AUTH_METHOD":            {login: false},
-	"VAULT_TRANSIT_KEY_ID":         {login: false},
-	"VAULT_TRANSIT_PATH":           {login: false},
-	"VAULT_TRANSIT_BATCH_SIZE":     {login: false},
-	"VAULT_IGNORE_MISSING_SECRETS": {login: false},
-	"VAULT_PASSTHROUGH":            {login: false},
-	"VAULT_REVOKE_TOKEN":           {login: false},
-	"VAULT_FROM_PATH":              {login: false},
-	"SECRET_INIT_DAEMON":           {login: false},
+	common.VaultToken:                {login: true},
+	common.VaultAddr:                 {login: true},
+	common.VaultAgentAddr:            {login: true},
+	common.VaultCACert:               {login: true},
+	common.VaultCAPath:               {login: true},
+	common.VaultClientCert:           {login: true},
+	common.VaultClientKey:            {login: true},
+	common.VaultClientTimeout:        {login: true},
+	common.VaultSRVLookup:            {login: true},
+	common.VaultSkipVerify:           {login: true},
+	common.VaultNamespace:            {login: true},
+	common.VaultTLSServerName:        {login: true},
+	common.VaultWrapTTL:              {login: true},
+	common.VaultMFA:                  {login: true},
+	common.VaultMaxRetries:           {login: true},
+	common.VaultClusterAddr:          {login: false},
+	common.VaultRedirectAddr:         {login: false},
+	common.VaultCLINoColor:           {login: false},
+	common.VaultRateLimit:            {login: false},
+	common.VaultRole:                 {login: false},
+	common.VaultPath:                 {login: false},
+	common.VaultAuthMethod:           {login: false},
+	common.VaultTransitKeyID:         {login: false},
+	common.VaultTransitPath:          {login: false},
+	common.VaultTransitBatchSize:     {login: false},
+	common.VaultIgnoreMissingSecrets: {login: false},
+	common.VaultPassthrough:          {login: false},
+	common.VaultRevokeToken:          {login: false},
+	common.VaultFromPath:             {login: false},
+	common.SecretInitDaemon:          {login: false},
 }
 
 func NewConfig() (*Config, error) {
@@ -92,9 +90,9 @@ func NewConfig() (*Config, error) {
 	// The login procedure takes the token from a file (if using Vault Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
 	// so if we got a VAULT_TOKEN for the special value with "vault:login"
-	vaultToken := os.Getenv(EnvPrefix + "TOKEN")
+	vaultToken := os.Getenv(common.VaultToken)
 	isLogin := vaultToken == vaultLogin
-	tokenFile, ok := os.LookupEnv(EnvPrefix + "TOKEN_FILE")
+	tokenFile, ok := os.LookupEnv(common.VaultTokenFile)
 	if ok {
 		// load token from vault-agent .vault-token or injected webhook
 		if b, err := os.ReadFile(tokenFile); err == nil {
@@ -104,22 +102,22 @@ func NewConfig() (*Config, error) {
 		}
 	} else {
 		if isLogin {
-			_ = os.Unsetenv(EnvPrefix + "TOKEN")
+			_ = os.Unsetenv(common.VaultToken)
 		}
 		// will use role/path based authentication
-		role, hasRole = os.LookupEnv(EnvPrefix + "ROLE")
-		authPath, hasPath = os.LookupEnv(EnvPrefix + "PATH")
-		authMethod, hasAuthMethod = os.LookupEnv(EnvPrefix + "AUTH_METHOD")
+		role, hasRole = os.LookupEnv(common.VaultRole)
+		authPath, hasPath = os.LookupEnv(common.VaultPath)
+		authMethod, hasAuthMethod = os.LookupEnv(common.VaultAuthMethod)
 		if !hasRole || !hasPath || !hasAuthMethod {
 			return nil, fmt.Errorf("incomplete authentication configuration %s, %s, and %s",
 				"VAULT_ROLE", "VAULT_PATH", "VAULT_AUTH_METHOD")
 		}
 	}
 
-	passthroughEnvVars := strings.Split(os.Getenv(EnvPrefix+"PASSTHROUGH"), ",")
+	passthroughEnvVars := strings.Split(os.Getenv(common.VaultPassthrough), ",")
 	if isLogin {
-		_ = os.Setenv(EnvPrefix+"TOKEN", vaultLogin)
-		passthroughEnvVars = append(passthroughEnvVars, EnvPrefix+"TOKEN")
+		_ = os.Setenv(common.VaultToken, vaultLogin)
+		passthroughEnvVars = append(passthroughEnvVars, common.VaultToken)
 	}
 
 	// do not sanitize env vars specified in VAULT_PASSTHROUGH
@@ -130,15 +128,15 @@ func NewConfig() (*Config, error) {
 	}
 
 	// injector configuration
-	transitKeyID := os.Getenv(EnvPrefix + "TRANSIT_KEY_ID")
-	transitPath := os.Getenv(EnvPrefix + "TRANSIT_PATH")
-	transitBatchSize := cast.ToInt(os.Getenv(EnvPrefix + "TRANSIT_BATCH_SIZE"))
-	daemonMode := cast.ToBool(os.Getenv(SecretInitDaemonEnv))
+	transitKeyID := os.Getenv(common.VaultTransitKeyID)
+	transitPath := os.Getenv(common.VaultTransitPath)
+	transitBatchSize := cast.ToInt(os.Getenv(common.VaultTransitBatchSize))
+	daemonMode := cast.ToBool(os.Getenv(common.SecretInitDaemon))
 	// Used both for reading secrets and transit encryption
-	ignoreMissingSecrets := cast.ToBool(os.Getenv(EnvPrefix + "IGNORE_MISSING_SECRETS"))
+	ignoreMissingSecrets := cast.ToBool(os.Getenv(common.VaultIgnoreMissingSecrets))
 
-	fromPath := os.Getenv(EnvPrefix + "FROM_PATH")
-	revokeToken := cast.ToBool(os.Getenv(EnvPrefix + "REVOKE_TOKEN"))
+	fromPath := os.Getenv(common.VaultFromPath)
+	revokeToken := cast.ToBool(os.Getenv(common.VaultRevokeToken))
 
 	return &Config{
 		Islogin:              isLogin,

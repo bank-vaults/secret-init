@@ -31,6 +31,7 @@ import (
 	slogsyslog "github.com/samber/slog-syslog"
 	"github.com/spf13/cast"
 
+	"github.com/bank-vaults/secret-init/common"
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
 	"github.com/bank-vaults/secret-init/provider/vault"
@@ -69,7 +70,7 @@ func main() {
 	{
 		var level slog.Level
 
-		err := level.UnmarshalText([]byte(os.Getenv("SECRET_INIT_LOG_LEVEL")))
+		err := level.UnmarshalText([]byte(os.Getenv(common.SecretInitLogLevel)))
 		if err != nil { // Silently fall back to info level
 			level = slog.LevelInfo
 		}
@@ -82,7 +83,7 @@ func main() {
 
 		router := slogmulti.Router()
 
-		if cast.ToBool(os.Getenv("SECRET_INIT_JSON_LOG")) {
+		if cast.ToBool(os.Getenv(common.SecretInitJSONLog)) {
 			// Send logs with level higher than warning to stderr
 			router = router.Add(
 				slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
@@ -108,7 +109,7 @@ func main() {
 			)
 		}
 
-		if logServerAddr := os.Getenv("SECRET_INIT_LOG_SERVER"); logServerAddr != "" {
+		if logServerAddr := os.Getenv(common.SecretInitLogServer); logServerAddr != "" {
 			writer, err := net.Dial("udp", logServerAddr)
 
 			// We silently ignore syslog connection errors for the lack of a better solution
@@ -124,11 +125,11 @@ func main() {
 		slog.SetDefault(logger)
 	}
 
-	daemonMode := cast.ToBool(os.Getenv("SECRET_INIT_DAEMON"))
-	delayExec := cast.ToDuration(os.Getenv("SECRET_INIT_DELAY"))
+	daemonMode := cast.ToBool(os.Getenv(common.SecretInitDaemon))
+	delayExec := cast.ToDuration(os.Getenv(common.SecretInitDelay))
 	sigs := make(chan os.Signal, 1)
 
-	provider, err := NewProvider(os.Getenv("PROVIDER"), logger, sigs)
+	provider, err := NewProvider(os.Getenv(common.Provider), logger, sigs)
 	if err != nil {
 		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 

@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bank-vaults/secret-init/common"
 )
 
 func TestConfig(t *testing.T) {
@@ -35,16 +37,16 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				EnvPrefix + "TOKEN":                  vaultLogin,
-				EnvPrefix + "TOKEN_FILE":             tokenFile,
-				EnvPrefix + "PASSTHROUGH":            EnvPrefix + "AGENT_ADDR, " + EnvPrefix + "CLI_NO_COLOR",
-				EnvPrefix + "TRANSIT_KEY_ID":         "test-key",
-				EnvPrefix + "TRANSIT_PATH":           "transit",
-				EnvPrefix + "TRANSIT_BATCH_SIZE":     "10",
-				SecretInitDaemonEnv:                  "true",
-				EnvPrefix + "IGNORE_MISSING_SECRETS": "true",
-				EnvPrefix + "REVOKE_TOKEN":           "true",
-				EnvPrefix + "FROM_PATH":              "secret/data/test",
+				common.VaultToken:                vaultLogin,
+				common.VaultTokenFile:            tokenFile,
+				common.VaultPassthrough:          common.VaultAgentAddr + ", " + common.VaultCLINoColor,
+				common.VaultTransitKeyID:         "test-key",
+				common.VaultTransitPath:          "transit",
+				common.VaultTransitBatchSize:     "10",
+				common.SecretInitDaemon:          "true",
+				common.VaultIgnoreMissingSecrets: "true",
+				common.VaultRevokeToken:          "true",
+				common.VaultFromPath:             "secret/data/test",
 			},
 			wantConfig: &Config{
 				Islogin:              true,
@@ -63,10 +65,10 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Role and Path",
 			env: map[string]string{
-				EnvPrefix + "TOKEN":       vaultLogin,
-				EnvPrefix + "ROLE":        "test-app-role",
-				EnvPrefix + "PATH":        "auth/approle/test/login",
-				EnvPrefix + "AUTH_METHOD": "test-approle",
+				common.VaultToken:      vaultLogin,
+				common.VaultRole:       "test-app-role",
+				common.VaultPath:       "auth/approle/test/login",
+				common.VaultAuthMethod: "test-approle",
 			},
 			wantConfig: &Config{
 				Islogin:    true,
@@ -80,7 +82,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration missing token file",
 			env: map[string]string{
-				EnvPrefix + "TOKEN_FILE": tokenFile + "/invalid",
+				common.VaultTokenFile: tokenFile + "/invalid",
 			},
 			wantConfig: nil,
 			wantErr:    true,
@@ -88,8 +90,8 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration missing role - path credentials",
 			env: map[string]string{
-				EnvPrefix + "PATH":        "auth/approle/test/login",
-				EnvPrefix + "AUTH_METHOD": "test-approle",
+				common.VaultPath:       "auth/approle/test/login",
+				common.VaultAuthMethod: "test-approle",
 			},
 			wantConfig: nil,
 			wantErr:    true,

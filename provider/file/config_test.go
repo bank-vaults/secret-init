@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bank-vaults/secret-init/common"
 )
 
 func TestConfig(t *testing.T) {
@@ -36,7 +38,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Custom mount path",
 			env: map[string]string{
-				EnvPrefix + "MOUNT_PATH": "/test/secrets",
+				common.FileMountPath: "/test/secrets",
 			},
 			wantMountPath: "/test/secrets",
 		},
