@@ -16,6 +16,7 @@ package file
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"testing/fstest"
 
@@ -28,7 +29,7 @@ func TestNewProvider(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   *Config
-		wantErr  bool
+		err      error
 		wantType bool
 	}{
 		{
@@ -36,7 +37,6 @@ func TestNewProvider(t *testing.T) {
 			config: &Config{
 				MountPath: "test/secrets",
 			},
-			wantErr:  false,
 			wantType: true,
 		},
 	}
@@ -45,9 +45,12 @@ func TestNewProvider(t *testing.T) {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
 			provider, err := NewProvider(ttp.config)
-
-			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-			assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
+			if err != nil {
+				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+			}
+			if ttp.wantType {
+				assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
+			}
 		})
 	}
 }
@@ -56,7 +59,7 @@ func TestLoadSecrets(t *testing.T) {
 	tests := []struct {
 		name        string
 		paths       []string
-		wantErr     bool
+		err         error
 		wantSecrets []provider.Secret
 	}{
 		{
@@ -66,7 +69,6 @@ func TestLoadSecrets(t *testing.T) {
 				"test/secrets/awsaccess.txt",
 				"test/secrets/awsid.txt",
 			},
-			wantErr: false,
 			wantSecrets: []provider.Secret{
 				{Path: "test/secrets/sqlpass.txt", Value: "3xtr3ms3cr3t"},
 				{Path: "test/secrets/awsaccess.txt", Value: "s3cr3t"},
@@ -80,8 +82,7 @@ func TestLoadSecrets(t *testing.T) {
 				"test/secrets/mistake/awsaccess.txt",
 				"test/secrets/mistake/awsid.txt",
 			},
-			wantErr:     true,
-			wantSecrets: nil,
+			err: fmt.Errorf("failed to get secret from file: failed to read file: open test/secrets/mistake/sqlpass.txt: file does not exist"),
 		},
 	}
 
@@ -95,9 +96,12 @@ func TestLoadSecrets(t *testing.T) {
 			}
 			provider := Provider{fs: fs}
 			secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
-
-			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-			assert.Equal(t, ttp.wantSecrets, secrets, "Unexpected secrets")
+			if err != nil {
+				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+			}
+			if ttp.wantSecrets != nil {
+				assert.Equal(t, ttp.wantSecrets, secrets, "Unexpected secrets")
+			}
 		})
 	}
 }

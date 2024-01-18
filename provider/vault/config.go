@@ -29,7 +29,7 @@ import (
 const vaultLogin = "vault:login"
 
 type Config struct {
-	Islogin              bool   `json:"islogin"`
+	IsLogin              bool   `json:"islogin"`
 	Token                string `json:"token"`
 	TokenFile            string `json:"tokenFile"`
 	Role                 string `json:"role"`
@@ -110,7 +110,7 @@ func NewConfig() (*Config, error) {
 		authMethod, hasAuthMethod = os.LookupEnv(common.VaultAuthMethod)
 		if !hasRole || !hasPath || !hasAuthMethod {
 			return nil, fmt.Errorf("incomplete authentication configuration %s, %s, and %s",
-				"VAULT_ROLE", "VAULT_PATH", "VAULT_AUTH_METHOD")
+				common.VaultRole, common.VaultPath, common.VaultAuthMethod)
 		}
 	}
 
@@ -139,7 +139,7 @@ func NewConfig() (*Config, error) {
 	revokeToken := cast.ToBool(os.Getenv(common.VaultRevokeToken))
 
 	return &Config{
-		Islogin:              isLogin,
+		IsLogin:              isLogin,
 		Token:                vaultToken,
 		TokenFile:            tokenFile,
 		Role:                 role,

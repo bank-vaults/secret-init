@@ -15,8 +15,8 @@
 package vault
 
 import (
+	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func TestConfig(t *testing.T) {
 		name       string
 		env        map[string]string
 		wantConfig *Config
-		wantErr    bool
+		err        error
 	}{
 		{
 			name: "Valid login configuration with Token",
@@ -49,7 +49,7 @@ func TestConfig(t *testing.T) {
 				common.VaultFromPath:             "secret/data/test",
 			},
 			wantConfig: &Config{
-				Islogin:              true,
+				IsLogin:              true,
 				Token:                "root",
 				TokenFile:            tokenFile,
 				TransitKeyID:         "test-key",
@@ -60,7 +60,6 @@ func TestConfig(t *testing.T) {
 				FromPath:             "secret/data/test",
 				RevokeToken:          true,
 			},
-			wantErr: false,
 		},
 		{
 			name: "Valid login configuration with Role and Path",
@@ -71,21 +70,19 @@ func TestConfig(t *testing.T) {
 				common.VaultAuthMethod: "test-approle",
 			},
 			wantConfig: &Config{
-				Islogin:    true,
+				IsLogin:    true,
 				Token:      vaultLogin,
 				Role:       "test-app-role",
 				AuthPath:   "auth/approle/test/login",
 				AuthMethod: "test-approle",
 			},
-			wantErr: false,
 		},
 		{
 			name: "Invalid login configuration missing token file",
 			env: map[string]string{
 				common.VaultTokenFile: tokenFile + "/invalid",
 			},
-			wantConfig: nil,
-			wantErr:    true,
+			err: fmt.Errorf("failed to read token file " + tokenFile + "/invalid: open " + tokenFile + "/invalid: not a directory"),
 		},
 		{
 			name: "Invalid login configuration missing role - path credentials",
@@ -93,8 +90,7 @@ func TestConfig(t *testing.T) {
 				common.VaultPath:       "auth/approle/test/login",
 				common.VaultAuthMethod: "test-approle",
 			},
-			wantConfig: nil,
-			wantErr:    true,
+			err: fmt.Errorf("incomplete authentication configuration VAULT_ROLE, VAULT_PATH, and VAULT_AUTH_METHOD"),
 		},
 	}
 
@@ -106,9 +102,12 @@ func TestConfig(t *testing.T) {
 			}
 
 			config, err := NewConfig()
-
-			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-			assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
+			if err != nil {
+				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+			}
+			if ttp.wantConfig != nil {
+				assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
+			}
 
 			// unset envs for the next test
 			for envKey := range ttp.env {
@@ -119,11 +118,11 @@ func TestConfig(t *testing.T) {
 }
 
 func newTokenFile(t *testing.T) string {
-	tokenFilePath := filepath.Join(t.TempDir(), "vault-token")
-	tokenFile, err := os.Create(tokenFilePath)
+	tokenFile, err := os.CreateTemp("", "vault-token")
 	if err != nil {
 		t.Fatalf("Failed to create a temporary token file: %v", err)
 	}
+	defer tokenFile.Close()
 
 	_, err = tokenFile.Write([]byte("root"))
 	if err != nil {

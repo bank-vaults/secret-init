@@ -94,7 +94,7 @@ func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (prov
 	}
 
 	return &Provider{
-		isLogin:        config.Islogin,
+		isLogin:        config.IsLogin,
 		client:         client,
 		injectorConfig: injectorConfig,
 		secretRenewer:  secretRenewer,

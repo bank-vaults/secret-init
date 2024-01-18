@@ -16,6 +16,7 @@ package vault
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -29,13 +30,13 @@ func TestNewProvider(t *testing.T) {
 		name               string
 		config             *Config
 		wantInjectorConfig injector.Config
-		wantErr            bool
+		err                error
 		wantType           bool
 	}{
 		{
 			name: "Valid Provider with Token",
 			config: &Config{
-				Islogin:              true,
+				IsLogin:              true,
 				TokenFile:            "root",
 				Token:                "root",
 				TransitKeyID:         "test-key",
@@ -46,14 +47,12 @@ func TestNewProvider(t *testing.T) {
 				FromPath:             "secret/data/test",
 				RevokeToken:          true,
 			},
-			wantErr:  false,
 			wantType: true,
 		},
 		{
-			name:     "Fail to create vault client",
-			config:   &Config{},
-			wantErr:  true,
-			wantType: false,
+			name:   "Fail to create vault client due to timeout",
+			config: &Config{},
+			err:    fmt.Errorf("timeout [10s] during waiting for Vault token"),
 		},
 	}
 
@@ -67,9 +66,12 @@ func TestNewProvider(t *testing.T) {
 
 		t.Run(ttp.name, func(t *testing.T) {
 			provider, err := NewProvider(ttp.config, logger, make(chan os.Signal))
-
-			assert.Equal(t, ttp.wantErr, err != nil, "Unexpected error status")
-			assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
+			if err != nil {
+				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+			}
+			if ttp.wantType {
+				assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
+			}
 		})
 	}
 
