@@ -17,6 +17,9 @@ package file
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -26,25 +29,46 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	tempDir := t.TempDir()
+	secretFile := newSecretFile(t, "3xtr3ms3cr3t")
+	defer os.Remove(secretFile)
+
 	tests := []struct {
 		name     string
 		config   *Config
 		err      error
 		wantType bool
+		wantFs   fs.FS
 	}{
 		{
-			name: "Valid config",
+			name: "Valid config - directory",
 			config: &Config{
-				MountPath: t.TempDir(),
+				MountPath: tempDir,
 			},
 			wantType: true,
+			wantFs:   os.DirFS(tempDir),
 		},
 		{
-			name: "Invalid config",
+			name: "Invalid config - directory does not exist",
 			config: &Config{
-				MountPath: "test/secrets",
+				MountPath: "test/secrets/invalid",
 			},
-			err: fmt.Errorf("directory does not exist: test/secrets"),
+			err: fmt.Errorf("failed to access path: stat test/secrets/invalid: no such file or directory"),
+		},
+		{
+			name: "Valid config - file",
+			config: &Config{
+				MountPath: secretFile,
+			},
+			wantType: true,
+			wantFs:   os.DirFS(filepath.Dir(secretFile)),
+		},
+		{
+			name: "Invalid config - file does not exist",
+			config: &Config{
+				MountPath: filepath.Dir(secretFile) + "/invalid",
+			},
+			err: fmt.Errorf("failed to access path: stat " + filepath.Dir(secretFile) + "/invalid" + ": no such file or directory"),
 		},
 	}
 
@@ -57,6 +81,10 @@ func TestNewProvider(t *testing.T) {
 			}
 			if ttp.wantType {
 				assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
+
+				if ttp.wantFs != nil {
+					assert.Equal(t, ttp.wantFs, provider.(*Provider).fs, "Unexpected file system")
+				}
 			}
 		})
 	}
@@ -107,8 +135,28 @@ func TestLoadSecrets(t *testing.T) {
 				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
 			}
 			if ttp.wantSecrets != nil {
-				assert.Equal(t, ttp.wantSecrets, secrets, "Unexpected secrets")
+				assert.ElementsMatch(t, ttp.wantSecrets, secrets, "Unexpected secrets")
 			}
 		})
 	}
+}
+
+func newSecretFile(t *testing.T, content string) string {
+	dir := t.TempDir() + "/test/secrets"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("Failed to create directory %s: %v", dir, err)
+	}
+
+	file, err := os.CreateTemp(dir, "secret.txt")
+	if err != nil {
+		t.Fatalf("Failed to create a temporary file: %v", err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(content)
+	if err != nil {
+		t.Fatalf("Failed to write to the temporary file: %v", err)
+	}
+
+	return file.Name()
 }

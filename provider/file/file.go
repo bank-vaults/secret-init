@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
@@ -31,15 +32,18 @@ type Provider struct {
 }
 
 func NewProvider(config *Config) (provider.Provider, error) {
-	// Check if the directory exists
-	_, err := os.Stat(config.MountPath)
+	// Check whether the path exists
+	fileInfo, err := os.Stat(config.MountPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("directory does not exist: %s", config.MountPath)
-		}
+		return nil, fmt.Errorf("failed to access path: %w", err)
 	}
 
-	return &Provider{fs: os.DirFS(config.MountPath)}, nil
+	// When the provided path points to a file, the parent directory is considered as the mount path.
+	if fileInfo.IsDir() {
+		return &Provider{fs: os.DirFS(config.MountPath)}, nil
+	}
+
+	return &Provider{fs: os.DirFS(filepath.Dir(config.MountPath))}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {

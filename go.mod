@@ -110,5 +110,5 @@ require (
 	github.com/bank-vaults/vault-sdk v0.9.1
 	github.com/samber/lo v1.38.1 // indirect
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 )

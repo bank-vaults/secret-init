@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/bank-vaults/internal/injector"
@@ -36,7 +37,6 @@ type Provider struct {
 	secretRenewer  injector.SecretRenewer
 	fromPath       string
 	revokeToken    bool
-	logger         *slog.Logger
 }
 
 type sanitized struct {
@@ -58,8 +58,9 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (provider.Provider, error) {
-	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{logger})}
+// passing daemonMode is a dirty way for now to avoid dependency
+func NewProvider(config *Config, daemonMode bool) (provider.Provider, error) {
+	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {
@@ -73,7 +74,7 @@ func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (prov
 
 	client, err := vault.NewClientWithOptions(clientOptions...)
 	if err != nil {
-		logger.Error(fmt.Errorf("failed to create vault client: %w", err).Error())
+		slog.Error(fmt.Errorf("failed to create vault client: %w", err).Error())
 
 		return nil, err
 	}
@@ -82,15 +83,18 @@ func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (prov
 		TransitKeyID:         config.TransitKeyID,
 		TransitPath:          config.TransitPath,
 		TransitBatchSize:     config.TransitBatchSize,
-		DaemonMode:           config.DaemonMode,
+		DaemonMode:           daemonMode,
 		IgnoreMissingSecrets: config.IgnoreMissingSecrets,
 	}
 
 	var secretRenewer injector.SecretRenewer
 
-	if config.DaemonMode {
-		secretRenewer = daemonSecretRenewer{client: client, sigs: sigs, logger: logger}
-		logger.Info("Daemon mode enabled. Will renew secrets in the background.")
+	if daemonMode {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs)
+
+		secretRenewer = daemonSecretRenewer{client: client, sigs: sigs, logger: slog.Default()}
+		slog.Info("Daemon mode enabled. Will renew secrets in the background.")
 	}
 
 	return &Provider{
@@ -100,7 +104,6 @@ func NewProvider(config *Config, logger *slog.Logger, sigs chan os.Signal) (prov
 		secretRenewer:  secretRenewer,
 		fromPath:       config.FromPath,
 		revokeToken:    config.RevokeToken,
-		logger:         logger,
 	}, nil
 }
 
@@ -108,14 +111,14 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	sanitized := sanitized{login: p.isLogin}
 	vaultEnviron := parsePathsToMap(paths)
 
-	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, p.logger)
+	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, slog.Default())
 	inject := func(key, value string) {
 		sanitized.append(key, value)
 	}
 
 	err := secretInjector.InjectSecretsFromVault(vaultEnviron, inject)
 	if err != nil {
-		p.logger.Error(fmt.Errorf("failed to inject secrets from vault: %w", err).Error())
+		slog.Error(fmt.Errorf("failed to inject secrets from vault: %w", err).Error())
 
 		return nil, err
 	}
@@ -123,7 +126,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	if p.fromPath != "" {
 		err = secretInjector.InjectSecretsFromVaultPath(p.fromPath, inject)
 		if err != nil {
-			p.logger.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
+			slog.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
 
 			return nil, err
 		}
@@ -134,7 +137,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 		err := p.client.RawClient().Auth().Token().RevokeSelf(p.client.RawClient().Token())
 		if err != nil {
 			// Do not exit on error, token revoking can be denied by policy
-			p.logger.Warn("failed to revoke token")
+			slog.Warn("failed to revoke token")
 		}
 
 		p.client.Close()

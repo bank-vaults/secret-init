@@ -21,17 +21,39 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bank-vaults/internal/injector"
 	"github.com/stretchr/testify/assert"
 )
 
+var originalLogger *slog.Logger
+
+func TestMain(m *testing.M) {
+	setupTestLogger()
+	code := m.Run()
+	restoreLogger()
+	os.Exit(code)
+}
+
+func setupTestLogger() {
+	originalLogger = slog.Default()
+
+	// Redirect logs to avoid polluting the test output
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, nil)
+	testLogger := slog.New(handler)
+	slog.SetDefault(testLogger)
+}
+
+func restoreLogger() {
+	slog.SetDefault(originalLogger)
+}
+
 func TestNewProvider(t *testing.T) {
 	tests := []struct {
-		name               string
-		config             *Config
-		wantInjectorConfig injector.Config
-		err                error
-		wantType           bool
+		name       string
+		config     *Config
+		daemonMode bool
+		err        error
+		wantType   bool
 	}{
 		{
 			name: "Valid Provider with Token",
@@ -42,12 +64,12 @@ func TestNewProvider(t *testing.T) {
 				TransitKeyID:         "test-key",
 				TransitPath:          "transit",
 				TransitBatchSize:     10,
-				DaemonMode:           true,
 				IgnoreMissingSecrets: true,
 				FromPath:             "secret/data/test",
 				RevokeToken:          true,
 			},
-			wantType: true,
+			daemonMode: true,
+			wantType:   true,
 		},
 		{
 			name:   "Fail to create vault client due to timeout",
@@ -59,13 +81,8 @@ func TestNewProvider(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 
-		// Redirect logs to avoid polluting the test output
-		var buf bytes.Buffer
-		handler := slog.NewTextHandler(&buf, nil)
-		logger := slog.New(handler)
-
 		t.Run(ttp.name, func(t *testing.T) {
-			provider, err := NewProvider(ttp.config, logger, make(chan os.Signal))
+			provider, err := NewProvider(ttp.config, ttp.daemonMode)
 			if err != nil {
 				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
 			}
@@ -74,5 +91,4 @@ func TestNewProvider(t *testing.T) {
 			}
 		})
 	}
-
 }

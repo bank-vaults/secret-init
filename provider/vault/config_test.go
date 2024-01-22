@@ -20,8 +20,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/bank-vaults/secret-init/common"
 )
 
 func TestConfig(t *testing.T) {
@@ -37,16 +35,15 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				common.VaultToken:                vaultLogin,
-				common.VaultTokenFile:            tokenFile,
-				common.VaultPassthrough:          common.VaultAgentAddr + ", " + common.VaultCLINoColor,
-				common.VaultTransitKeyID:         "test-key",
-				common.VaultTransitPath:          "transit",
-				common.VaultTransitBatchSize:     "10",
-				common.SecretInitDaemon:          "true",
-				common.VaultIgnoreMissingSecrets: "true",
-				common.VaultRevokeToken:          "true",
-				common.VaultFromPath:             "secret/data/test",
+				defaultEnvPrefix + TokenEnv:                vaultLogin,
+				defaultEnvPrefix + TokenFileEnv:            tokenFile,
+				defaultEnvPrefix + PassthroughEnv:          defaultEnvPrefix + AgentAddrEnv + ", " + defaultEnvPrefix + CLINoColorEnv,
+				defaultEnvPrefix + TransitKeyIDEnv:         "test-key",
+				defaultEnvPrefix + TransitPathEnv:          "transit",
+				defaultEnvPrefix + TransitBatchSizeEnv:     "10",
+				defaultEnvPrefix + IgnoreMissingSecretsEnv: "true",
+				defaultEnvPrefix + RevokeTokenEnv:          "true",
+				defaultEnvPrefix + FromPathEnv:             "secret/data/test",
 			},
 			wantConfig: &Config{
 				IsLogin:              true,
@@ -55,7 +52,6 @@ func TestConfig(t *testing.T) {
 				TransitKeyID:         "test-key",
 				TransitPath:          "transit",
 				TransitBatchSize:     10,
-				DaemonMode:           true,
 				IgnoreMissingSecrets: true,
 				FromPath:             "secret/data/test",
 				RevokeToken:          true,
@@ -64,10 +60,10 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Role and Path",
 			env: map[string]string{
-				common.VaultToken:      vaultLogin,
-				common.VaultRole:       "test-app-role",
-				common.VaultPath:       "auth/approle/test/login",
-				common.VaultAuthMethod: "test-approle",
+				defaultEnvPrefix + TokenEnv:      vaultLogin,
+				defaultEnvPrefix + RoleEnv:       "test-app-role",
+				defaultEnvPrefix + PathEnv:       "auth/approle/test/login",
+				defaultEnvPrefix + AuthMethodEnv: "test-approle",
 			},
 			wantConfig: &Config{
 				IsLogin:    true,
@@ -78,24 +74,24 @@ func TestConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid login configuration missing token file",
+			name: "Invalid login configuration using tokenfile - missing token file",
 			env: map[string]string{
-				common.VaultTokenFile: tokenFile + "/invalid",
+				defaultEnvPrefix + TokenFileEnv: tokenFile + "/invalid",
 			},
 			err: fmt.Errorf("failed to read token file " + tokenFile + "/invalid: open " + tokenFile + "/invalid: not a directory"),
 		},
 		{
-			name: "Invalid login configuration using role/path auth, missing role",
+			name: "Invalid login configuration using role/path - missing role",
 			env: map[string]string{
-				common.VaultPath:       "auth/approle/test/login",
-				common.VaultAuthMethod: "k8s",
+				defaultEnvPrefix + PathEnv:       "auth/approle/test/login",
+				defaultEnvPrefix + AuthMethodEnv: "k8s",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_ROLE missing"),
 		},
 		{
-			name: "Invalid login configuration using role/path auth, missing path and auth method",
+			name: "Invalid login configuration using role/path - missing path and auth method",
 			env: map[string]string{
-				common.VaultRole: "test-app-role",
+				defaultEnvPrefix + RoleEnv: "test-app-role",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH, VAULT_AUTH_METHOD missing"),
 		},
@@ -112,6 +108,7 @@ func TestConfig(t *testing.T) {
 			if err != nil {
 				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
 			}
+
 			if ttp.wantConfig != nil {
 				assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
 			}

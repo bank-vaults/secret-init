@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package envstore
 
 import (
 	"fmt"
@@ -24,7 +24,11 @@ import (
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func GetEnvironMap() map[string]string {
+type EnvStore struct {
+	data map[string]string
+}
+
+func NewEnvStore() *EnvStore {
 	environ := make(map[string]string, len(os.Environ()))
 	for _, env := range os.Environ() {
 		split := strings.SplitN(env, "=", 2)
@@ -33,16 +37,19 @@ func GetEnvironMap() map[string]string {
 		environ[name] = value
 	}
 
-	return environ
+	return &EnvStore{
+		data: environ,
+	}
 }
 
-func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string {
+func (s *EnvStore) GetPathsFor(provider provider.Provider) ([]string, error) {
 	var secretPaths []string
 
-	for envKey, path := range envs {
+	for envKey, path := range s.data {
 		p, path := getProviderPath(path)
+
 		// TODO(csatib02): Implement multi-provider support
-		if p == providerName {
+		if p == provider.GetProviderName() {
 			// The injector function expects a map of key:value pairs
 			if p == vault.ProviderName {
 				path = envKey + "=" + path
@@ -52,10 +59,40 @@ func ExtractPathsFromEnvs(envs map[string]string, providerName string) []string 
 		}
 	}
 
-	return secretPaths
+	return secretPaths, nil
 }
 
-func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]string, error) {
+func (s *EnvStore) GetProviderSecrets(provider provider.Provider, secrets []provider.Secret) ([]string, error) {
+	switch provider.GetProviderName() {
+	case vault.ProviderName:
+		// The Vault provider already returns the secrets with the environment variable keys
+		var vaultEnv []string
+		for _, secret := range secrets {
+			vaultEnv = append(vaultEnv, secret.Format())
+		}
+		return vaultEnv, nil
+
+	default:
+		return createSecretEnvsFrom(s.data, secrets)
+	}
+}
+
+// Returns the detected provider name and path with removed prefix
+func getProviderPath(path string) (string, string) {
+	if strings.HasPrefix(path, "file:") {
+		var fileProviderName = file.ProviderName
+		return fileProviderName, strings.TrimPrefix(path, "file:")
+	}
+	if strings.HasPrefix(path, "vault:") {
+		var vaultProviderName = vault.ProviderName
+		// Do not remove the prefix since it will be processed during injection
+		return vaultProviderName, path
+	}
+
+	return "", path
+}
+
+func createSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]string, error) {
 	// Reverse the map so we can match
 	// the environment variable key to the secret
 	// by using the secret path
@@ -80,28 +117,4 @@ func CreateSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 	}
 
 	return secretsEnv, nil
-}
-
-// Returns the detected provider name and path with removed prefix
-func getProviderPath(path string) (string, string) {
-	if strings.HasPrefix(path, "file:") {
-		var fileProviderName = file.ProviderName
-		return fileProviderName, strings.TrimPrefix(path, "file:")
-	}
-	if strings.HasPrefix(path, "vault:") {
-		var vaultProviderName = vault.ProviderName
-		// Do not remove the prefix since it will be processed during injection
-		return vaultProviderName, path
-	}
-
-	return "", path
-}
-
-func CreateSecretsEnvForVaultProvider(secrets []provider.Secret) []string {
-	var secretsEnv []string
-	for _, secret := range secrets {
-		secretsEnv = append(secretsEnv, secret.Format())
-	}
-
-	return secretsEnv
 }

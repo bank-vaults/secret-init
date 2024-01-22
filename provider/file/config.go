@@ -17,20 +17,24 @@ package file
 import (
 	"log/slog"
 	"os"
-
-	"github.com/bank-vaults/secret-init/common"
 )
 
-const defaultMountPath = "/"
+const (
+	defaultEnvPrefix = "FILE_"
+
+	MountPathEnv = "MOUNT_PATH"
+
+	defaultMountPath = "/"
+)
 
 type Config struct {
-	MountPath string `json:"mountPath"`
+	MountPath string `json:"mount_path"`
 }
 
-func NewConfig(logger *slog.Logger) *Config {
-	mountPath, ok := os.LookupEnv(common.FileMountPath)
+func NewConfig() *Config {
+	mountPath, ok := os.LookupEnv(defaultEnvPrefix + MountPathEnv)
 	if !ok {
-		logger.Warn("Mount path not provided. Using default.", slog.String("Default Mount Path", defaultMountPath))
+		slog.Warn("mount path not provided, using default", slog.String("mount-path", defaultMountPath))
 		mountPath = defaultMountPath
 	}
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package file
+package config
 
 import (
 	"os"
@@ -23,21 +23,26 @@ import (
 
 func TestConfig(t *testing.T) {
 	tests := []struct {
-		name          string
-		env           map[string]string
-		wantMountPath string
+		name       string
+		env        map[string]string
+		wantConfig *Config
 	}{
 		{
-			name:          "Default mount path",
-			env:           map[string]string{},
-			wantMountPath: "/",
-		},
-		{
-			name: "Custom mount path",
+			name: "Valid configuration",
 			env: map[string]string{
-				defaultEnvPrefix + MountPathEnv: "/test/secrets",
+				defaultEnvPrefix + LogLevelEnv:  "debug",
+				defaultEnvPrefix + JSONLogEnv:   "true",
+				defaultEnvPrefix + LogServerEnv: "",
+				defaultEnvPrefix + DaemonEnv:    "true",
+				defaultEnvPrefix + ProviderEnv:  "vault",
 			},
-			wantMountPath: "/test/secrets",
+			wantConfig: &Config{
+				LogLevel:  "debug",
+				JSONLog:   true,
+				LogServer: "",
+				Daemon:    true,
+				Provider:  "vault",
+			},
 		},
 	}
 
@@ -48,9 +53,12 @@ func TestConfig(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 
-			config := NewConfig()
+			config, err := NewConfig()
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
 
-			assert.Equal(t, ttp.wantMountPath, config.MountPath, "Unexpected mount path")
+			assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
 
 			// unset envs for the next test
 			for envKey := range ttp.env {
