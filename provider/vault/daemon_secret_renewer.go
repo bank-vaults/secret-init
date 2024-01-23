@@ -28,7 +28,6 @@ import (
 type daemonSecretRenewer struct {
 	client *vault.Client
 	sigs   chan os.Signal
-	logger *slog.Logger
 }
 
 func (r daemonSecretRenewer) Renew(path string, secret *vaultapi.Secret) error {
@@ -45,21 +44,21 @@ func (r daemonSecretRenewer) Renew(path string, secret *vaultapi.Secret) error {
 		for {
 			select {
 			case renewOutput := <-watcher.RenewCh():
-				r.logger.Info("secret renewed", slog.String("path", path), slog.Duration("lease-duration", time.Duration(renewOutput.Secret.LeaseDuration)*time.Second))
+				slog.Info("secret renewed", slog.String("path", path), slog.Duration("lease-duration", time.Duration(renewOutput.Secret.LeaseDuration)*time.Second))
 			case doneError := <-watcher.DoneCh():
 				if !secret.Renewable {
 					leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
 					time.Sleep(leaseDuration)
 
-					r.logger.Info("secret lease has expired", slog.String("path", path), slog.Duration("lease-duration", leaseDuration))
+					slog.Info("secret lease has expired", slog.String("path", path), slog.Duration("lease-duration", leaseDuration))
 				}
 
-				r.logger.Info("secret renewal has stopped, sending SIGTERM to process", slog.String("path", path), slog.Any("done-error", doneError))
+				slog.Info("secret renewal has stopped, sending SIGTERM to process", slog.String("path", path), slog.Any("done-error", doneError))
 
 				r.sigs <- syscall.SIGTERM
 
 				timeout := <-time.After(10 * time.Second)
-				r.logger.Info("killing process due to SIGTERM timeout", slog.Time("timeout", timeout))
+				slog.Info("killing process due to SIGTERM timeout", slog.Time("timeout", timeout))
 				r.sigs <- syscall.SIGKILL
 
 				return

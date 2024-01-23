@@ -89,11 +89,20 @@ func TestConfig(t *testing.T) {
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_ROLE missing"),
 		},
 		{
-			name: "Invalid login configuration using role/path - missing path and auth method",
+			name: "Invalid login configuration using role/path - missing path",
+			env: map[string]string{
+				RoleEnv:       "test-app-role",
+				AuthMethodEnv: "k8s",
+			},
+			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH missing"),
+		},
+		{
+			name: "Invalid login configuration using role/path - missing auth method",
 			env: map[string]string{
 				RoleEnv: "test-app-role",
+				PathEnv: "auth/approle/test/login",
 			},
-			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH, VAULT_AUTH_METHOD missing"),
+			err: fmt.Errorf("incomplete authentication configuration: VAULT_AUTH_METHOD missing"),
 		},
 	}
 

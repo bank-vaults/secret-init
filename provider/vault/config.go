@@ -16,7 +16,6 @@ package vault
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -24,7 +23,8 @@ import (
 )
 
 const (
-	// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
+	// The special value for SECRET_INIT which marks
+	// that the login token needs to be passed through to the application
 	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"
 
@@ -127,8 +127,6 @@ func LoadConfig() (*Config, error) {
 		// load token from vault-agent .vault-token or injected webhook
 		tokenFileContent, err := os.ReadFile(tokenFile)
 		if err != nil {
-			slog.Error(fmt.Errorf("failed to read token file %s: %w", tokenFile, err).Error())
-
 			return nil, fmt.Errorf("failed to read token file %s: %w", tokenFile, err)
 		}
 		vaultToken = string(tokenFileContent)
@@ -136,24 +134,19 @@ func LoadConfig() (*Config, error) {
 		if isLogin {
 			_ = os.Unsetenv(TokenEnv)
 		}
+
 		// will use role/path based authentication
 		role, hasRole = os.LookupEnv(RoleEnv)
-		authPath, hasPath = os.LookupEnv(PathEnv)
-		authMethod, hasAuthMethod = os.LookupEnv(AuthMethodEnv)
-		var missingConfig []string
-
 		if !hasRole {
-			missingConfig = append(missingConfig, RoleEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", RoleEnv)
 		}
+		authPath, hasPath = os.LookupEnv(PathEnv)
 		if !hasPath {
-			missingConfig = append(missingConfig, PathEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", PathEnv)
 		}
+		authMethod, hasAuthMethod = os.LookupEnv(AuthMethodEnv)
 		if !hasAuthMethod {
-			missingConfig = append(missingConfig, AuthMethodEnv)
-		}
-
-		if len(missingConfig) > 0 {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", strings.Join(missingConfig, ", "))
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", AuthMethodEnv)
 		}
 	}
 

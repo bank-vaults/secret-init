@@ -33,20 +33,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setupTestLogger() {
-	originalLogger = slog.Default()
-
-	// Redirect logs to avoid polluting the test output
-	var buf bytes.Buffer
-	handler := slog.NewTextHandler(&buf, nil)
-	testLogger := slog.New(handler)
-	slog.SetDefault(testLogger)
-}
-
-func restoreLogger() {
-	slog.SetDefault(originalLogger)
-}
-
 func TestNewProvider(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -74,7 +60,7 @@ func TestNewProvider(t *testing.T) {
 		{
 			name:   "Fail to create vault client due to timeout",
 			config: &Config{},
-			err:    fmt.Errorf("timeout [10s] during waiting for Vault token"),
+			err:    fmt.Errorf("failed to create vault client: timeout [10s] during waiting for Vault token"),
 		},
 	}
 
@@ -82,7 +68,7 @@ func TestNewProvider(t *testing.T) {
 		ttp := tt
 
 		t.Run(ttp.name, func(t *testing.T) {
-			provider, err := NewProvider(ttp.config, ttp.daemonMode)
+			provider, err := NewProvider(ttp.config)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
@@ -91,4 +77,18 @@ func TestNewProvider(t *testing.T) {
 			}
 		})
 	}
+}
+
+func setupTestLogger() {
+	originalLogger = slog.Default()
+
+	// Redirect logs to avoid polluting the test output
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, nil)
+	testLogger := slog.New(handler)
+	slog.SetDefault(testLogger)
+}
+
+func restoreLogger() {
+	slog.SetDefault(originalLogger)
 }

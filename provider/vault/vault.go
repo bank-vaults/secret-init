@@ -25,6 +25,7 @@ import (
 	"github.com/bank-vaults/internal/injector"
 	"github.com/bank-vaults/vault-sdk/vault"
 
+	"github.com/bank-vaults/secret-init/common"
 	"github.com/bank-vaults/secret-init/provider"
 )
 
@@ -47,8 +48,12 @@ type sanitized struct {
 // VAULT_* variables are not populated into this list if this is not a login scenario.
 func (s *sanitized) append(key string, value string) {
 	envType, ok := sanitizeEnvmap[key]
+	// If the key being appended is not present in sanitizeEnvmap, it signifies that
+	// it is not a VAULT_* variable.
+	// Additionally, in a login scenario, we include VAULT_* variables in the secrets list.
 	if !ok || (s.login && envType.login) {
-		// Path here is actually the secrets key
+		// Path here is actually the secret's key
+		// (the environment variable name)
 		secret := provider.Secret{
 			Path:  key,
 			Value: value,
@@ -59,7 +64,7 @@ func (s *sanitized) append(key string, value string) {
 }
 
 // passing daemonMode is a dirty way for now to avoid dependency
-func NewProvider(config *Config, daemonMode bool) (provider.Provider, error) {
+func NewProvider(config *Config) (provider.Provider, error) {
 	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
@@ -74,26 +79,31 @@ func NewProvider(config *Config, daemonMode bool) (provider.Provider, error) {
 
 	client, err := vault.NewClientWithOptions(clientOptions...)
 	if err != nil {
-		slog.Error(fmt.Errorf("failed to create vault client: %w", err).Error())
+		return nil, fmt.Errorf("failed to create vault client: %w", err)
+	}
 
-		return nil, err
+	// Accessing the application configuration is necessary
+	// to determine whether daemon mode is enabled
+	appConfig, err := common.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load application config: %w", err)
 	}
 
 	injectorConfig := injector.Config{
 		TransitKeyID:         config.TransitKeyID,
 		TransitPath:          config.TransitPath,
 		TransitBatchSize:     config.TransitBatchSize,
-		DaemonMode:           daemonMode,
 		IgnoreMissingSecrets: config.IgnoreMissingSecrets,
+		DaemonMode:           appConfig.Daemon,
 	}
 
 	var secretRenewer injector.SecretRenewer
 
-	if daemonMode {
+	if appConfig.Daemon {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs)
 
-		secretRenewer = daemonSecretRenewer{client: client, sigs: sigs, logger: slog.Default()}
+		secretRenewer = daemonSecretRenewer{client: client, sigs: sigs}
 		slog.Info("Daemon mode enabled. Will renew secrets in the background.")
 	}
 
@@ -107,6 +117,10 @@ func NewProvider(config *Config, daemonMode bool) (provider.Provider, error) {
 	}, nil
 }
 
+// LoadSecret's path formatting: <key>=<path>
+// This formatting is necessary because the injector expects a map of key:value pairs.
+// It also returns a map of key:value pairs, where the key is the environment variable name
+// and the value is the secret value
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
 	sanitized := sanitized{login: p.isLogin}
 	vaultEnviron := parsePathsToMap(paths)
@@ -118,17 +132,13 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 
 	err := secretInjector.InjectSecretsFromVault(vaultEnviron, inject)
 	if err != nil {
-		slog.Error(fmt.Errorf("failed to inject secrets from vault: %w", err).Error())
-
-		return nil, err
+		return nil, fmt.Errorf("failed to inject secrets from vault: %w", err)
 	}
 
 	if p.fromPath != "" {
 		err = secretInjector.InjectSecretsFromVaultPath(p.fromPath, inject)
 		if err != nil {
-			slog.Error(fmt.Errorf("failed to inject secrets from vault path: %w", err).Error())
-
-			return nil, err
+			return nil, fmt.Errorf("failed to inject secrets from vault path: %w", err)
 		}
 	}
 
@@ -146,6 +156,10 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return sanitized.secrets, nil
 }
 
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}
+
 func parsePathsToMap(paths []string) map[string]string {
 	vaultEnviron := make(map[string]string)
 
@@ -157,8 +171,4 @@ func parsePathsToMap(paths []string) map[string]string {
 	}
 
 	return vaultEnviron
-}
-
-func (p *Provider) GetProviderName() string {
-	return ProviderName
 }
