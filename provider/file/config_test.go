@@ -35,7 +35,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Custom mount path",
 			env: map[string]string{
-				defaultEnvPrefix + MountPathEnv: "/test/secrets",
+				MountPathEnv: "/test/secrets",
 			},
 			wantMountPath: "/test/secrets",
 		},
@@ -48,7 +48,7 @@ func TestConfig(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 
-			config := NewConfig()
+			config := LoadConfig()
 
 			assert.Equal(t, ttp.wantMountPath, config.MountPath, "Unexpected mount path")
 

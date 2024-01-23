@@ -20,19 +20,17 @@ import (
 )
 
 const (
-	defaultEnvPrefix = "FILE_"
-
-	MountPathEnv = "MOUNT_PATH"
-
 	defaultMountPath = "/"
+
+	MountPathEnv = "FILE_MOUNT_PATH"
 )
 
 type Config struct {
 	MountPath string `json:"mount_path"`
 }
 
-func NewConfig() *Config {
-	mountPath, ok := os.LookupEnv(defaultEnvPrefix + MountPathEnv)
+func LoadConfig() *Config {
+	mountPath, ok := os.LookupEnv(MountPathEnv)
 	if !ok {
 		slog.Warn("mount path not provided, using default", slog.String("mount-path", defaultMountPath))
 		mountPath = defaultMountPath

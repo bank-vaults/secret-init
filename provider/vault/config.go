@@ -23,43 +23,41 @@ import (
 	"github.com/spf13/cast"
 )
 
-// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
-// which was acquired during the vault client initialization.
 const (
-	defaultEnvPrefix = "VAULT_"
-
-	TokenEnv                = "TOKEN"
-	TokenFileEnv            = "TOKEN_FILE"
-	AddrEnv                 = "ADDR"
-	AgentAddrEnv            = "AGENT_ADDR"
-	CACertEnv               = "CACERT"
-	CAPathEnv               = "CAPATH"
-	ClientCertEnv           = "CLIENT_CERT"
-	ClientKeyEnv            = "CLIENT_KEY"
-	ClientTimeoutEnv        = "CLIENT_TIMEOUT"
-	SRVLookupEnv            = "SRV_LOOKUP"
-	SkipVerifyEnv           = "SKIP_VERIFY"
-	NamespaceEnv            = "NAMESPACE"
-	TLSServerNameEnv        = "TLS_SERVER_NAME"
-	WrapTTLEnv              = "WRAP_TTL"
-	MFAEnv                  = "MFA"
-	MaxRetriesEnv           = "MAX_RETRIES"
-	ClusterAddrEnv          = "CLUSTER_ADDR"
-	RedirectAddrEnv         = "REDIRECT_ADDR"
-	CLINoColorEnv           = "CLI_NO_COLOR"
-	RateLimitEnv            = "RATE_LIMIT"
-	RoleEnv                 = "ROLE"
-	PathEnv                 = "PATH"
-	AuthMethodEnv           = "AUTH_METHOD"
-	TransitKeyIDEnv         = "TRANSIT_KEY_ID"
-	TransitPathEnv          = "TRANSIT_PATH"
-	TransitBatchSizeEnv     = "TRANSIT_BATCH_SIZE"
-	IgnoreMissingSecretsEnv = "IGNORE_MISSING_SECRETS"
-	PassthroughEnv          = "PASSTHROUGH"
-	RevokeTokenEnv          = "REVOKE_TOKEN"
-	FromPathEnv             = "FROM_PATH"
-
+	// The special value for SECRET_INIT which marks that the login token needs to be passed through to the application
+	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"
+
+	TokenEnv                = "VAULT_TOKEN"
+	TokenFileEnv            = "VAULT_TOKEN_FILE"
+	AddrEnv                 = "VAULT_ADDR"
+	AgentAddrEnv            = "VAULT_AGENT_ADDR"
+	CACertEnv               = "VAULT_CACERT"
+	CAPathEnv               = "VAULT_CAPATH"
+	ClientCertEnv           = "VAULT_CLIENT_CERT"
+	ClientKeyEnv            = "VAULT_CLIENT_KEY"
+	ClientTimeoutEnv        = "VAULT_CLIENT_TIMEOUT"
+	SRVLookupEnv            = "VAULT_SRV_LOOKUP"
+	SkipVerifyEnv           = "VAULT_SKIP_VERIFY"
+	NamespaceEnv            = "VAULT_NAMESPACE"
+	TLSServerNameEnv        = "VAULT_TLS_SERVER_NAME"
+	WrapTTLEnv              = "VAULT_WRAP_TTL"
+	MFAEnv                  = "VAULT_MFA"
+	MaxRetriesEnv           = "VAULT_MAX_RETRIES"
+	ClusterAddrEnv          = "VAULT_CLUSTER_ADDR"
+	RedirectAddrEnv         = "VAULT_REDIRECT_ADDR"
+	CLINoColorEnv           = "VAULT_CLI_NO_COLOR"
+	RateLimitEnv            = "VAULT_RATE_LIMIT"
+	RoleEnv                 = "VAULT_ROLE"
+	PathEnv                 = "VAULT_PATH"
+	AuthMethodEnv           = "VAULT_AUTH_METHOD"
+	TransitKeyIDEnv         = "VAULT_TRANSIT_KEY_ID"
+	TransitPathEnv          = "VAULT_TRANSIT_PATH"
+	TransitBatchSizeEnv     = "VAULT_TRANSIT_BATCH_SIZE"
+	IgnoreMissingSecretsEnv = "VAULT_IGNORE_MISSING_SECRETS"
+	PassthroughEnv          = "VAULT_PASSTHROUGH"
+	RevokeTokenEnv          = "VAULT_REVOKE_TOKEN"
+	FromPathEnv             = "VAULT_FROM_PATH"
 )
 
 type Config struct {
@@ -113,7 +111,7 @@ var sanitizeEnvmap = map[string]envType{
 	FromPathEnv:             {login: false},
 }
 
-func NewConfig() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	var (
 		role, authPath, authMethod      string
 		hasRole, hasPath, hasAuthMethod bool
@@ -122,9 +120,9 @@ func NewConfig() (*Config, error) {
 	// The login procedure takes the token from a file (if using Vault Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
 	// so if we got a VAULT_TOKEN for the special value with "vault:login"
-	vaultToken := os.Getenv(defaultEnvPrefix + TokenEnv)
+	vaultToken := os.Getenv(TokenEnv)
 	isLogin := vaultToken == vaultLogin
-	tokenFile, ok := os.LookupEnv(defaultEnvPrefix + TokenFileEnv)
+	tokenFile, ok := os.LookupEnv(TokenFileEnv)
 	if ok {
 		// load token from vault-agent .vault-token or injected webhook
 		tokenFileContent, err := os.ReadFile(tokenFile)
@@ -136,22 +134,22 @@ func NewConfig() (*Config, error) {
 		vaultToken = string(tokenFileContent)
 	} else {
 		if isLogin {
-			_ = os.Unsetenv(defaultEnvPrefix + TokenEnv)
+			_ = os.Unsetenv(TokenEnv)
 		}
 		// will use role/path based authentication
-		role, hasRole = os.LookupEnv(defaultEnvPrefix + RoleEnv)
-		authPath, hasPath = os.LookupEnv(defaultEnvPrefix + PathEnv)
-		authMethod, hasAuthMethod = os.LookupEnv(defaultEnvPrefix + AuthMethodEnv)
+		role, hasRole = os.LookupEnv(RoleEnv)
+		authPath, hasPath = os.LookupEnv(PathEnv)
+		authMethod, hasAuthMethod = os.LookupEnv(AuthMethodEnv)
 		var missingConfig []string
 
 		if !hasRole {
-			missingConfig = append(missingConfig, defaultEnvPrefix+RoleEnv)
+			missingConfig = append(missingConfig, RoleEnv)
 		}
 		if !hasPath {
-			missingConfig = append(missingConfig, defaultEnvPrefix+PathEnv)
+			missingConfig = append(missingConfig, PathEnv)
 		}
 		if !hasAuthMethod {
-			missingConfig = append(missingConfig, defaultEnvPrefix+AuthMethodEnv)
+			missingConfig = append(missingConfig, AuthMethodEnv)
 		}
 
 		if len(missingConfig) > 0 {
@@ -159,9 +157,9 @@ func NewConfig() (*Config, error) {
 		}
 	}
 
-	passthroughEnvVars := strings.Split(os.Getenv(defaultEnvPrefix+PassthroughEnv), ",")
+	passthroughEnvVars := strings.Split(os.Getenv(PassthroughEnv), ",")
 	if isLogin {
-		_ = os.Setenv(defaultEnvPrefix+TokenEnv, vaultLogin)
+		_ = os.Setenv(TokenEnv, vaultLogin)
 		passthroughEnvVars = append(passthroughEnvVars, TokenEnv)
 	}
 
@@ -180,12 +178,12 @@ func NewConfig() (*Config, error) {
 		AuthPath:   authPath,
 		AuthMethod: authMethod,
 		// injector configuration
-		TransitKeyID:     os.Getenv(defaultEnvPrefix + TransitKeyIDEnv),
-		TransitPath:      os.Getenv(defaultEnvPrefix + TransitPathEnv),
-		TransitBatchSize: cast.ToInt(os.Getenv(defaultEnvPrefix + TransitBatchSizeEnv)),
+		TransitKeyID:     os.Getenv(TransitKeyIDEnv),
+		TransitPath:      os.Getenv(TransitPathEnv),
+		TransitBatchSize: cast.ToInt(os.Getenv(TransitBatchSizeEnv)),
 		// Used both for reading secrets and transit encryption
-		IgnoreMissingSecrets: cast.ToBool(os.Getenv(defaultEnvPrefix + IgnoreMissingSecretsEnv)),
-		FromPath:             os.Getenv(defaultEnvPrefix + FromPathEnv),
-		RevokeToken:          cast.ToBool(os.Getenv(defaultEnvPrefix + RevokeTokenEnv)),
+		IgnoreMissingSecrets: cast.ToBool(os.Getenv(IgnoreMissingSecretsEnv)),
+		FromPath:             os.Getenv(FromPathEnv),
+		RevokeToken:          cast.ToBool(os.Getenv(RevokeTokenEnv)),
 	}, nil
 }

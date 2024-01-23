@@ -35,15 +35,15 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				defaultEnvPrefix + TokenEnv:                vaultLogin,
-				defaultEnvPrefix + TokenFileEnv:            tokenFile,
-				defaultEnvPrefix + PassthroughEnv:          defaultEnvPrefix + AgentAddrEnv + ", " + defaultEnvPrefix + CLINoColorEnv,
-				defaultEnvPrefix + TransitKeyIDEnv:         "test-key",
-				defaultEnvPrefix + TransitPathEnv:          "transit",
-				defaultEnvPrefix + TransitBatchSizeEnv:     "10",
-				defaultEnvPrefix + IgnoreMissingSecretsEnv: "true",
-				defaultEnvPrefix + RevokeTokenEnv:          "true",
-				defaultEnvPrefix + FromPathEnv:             "secret/data/test",
+				TokenEnv:                vaultLogin,
+				TokenFileEnv:            tokenFile,
+				PassthroughEnv:          AgentAddrEnv + ", " + CLINoColorEnv,
+				TransitKeyIDEnv:         "test-key",
+				TransitPathEnv:          "transit",
+				TransitBatchSizeEnv:     "10",
+				IgnoreMissingSecretsEnv: "true",
+				RevokeTokenEnv:          "true",
+				FromPathEnv:             "secret/data/test",
 			},
 			wantConfig: &Config{
 				IsLogin:              true,
@@ -60,10 +60,10 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Role and Path",
 			env: map[string]string{
-				defaultEnvPrefix + TokenEnv:      vaultLogin,
-				defaultEnvPrefix + RoleEnv:       "test-app-role",
-				defaultEnvPrefix + PathEnv:       "auth/approle/test/login",
-				defaultEnvPrefix + AuthMethodEnv: "test-approle",
+				TokenEnv:      vaultLogin,
+				RoleEnv:       "test-app-role",
+				PathEnv:       "auth/approle/test/login",
+				AuthMethodEnv: "test-approle",
 			},
 			wantConfig: &Config{
 				IsLogin:    true,
@@ -76,22 +76,22 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration using tokenfile - missing token file",
 			env: map[string]string{
-				defaultEnvPrefix + TokenFileEnv: tokenFile + "/invalid",
+				TokenFileEnv: tokenFile + "/invalid",
 			},
 			err: fmt.Errorf("failed to read token file " + tokenFile + "/invalid: open " + tokenFile + "/invalid: not a directory"),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing role",
 			env: map[string]string{
-				defaultEnvPrefix + PathEnv:       "auth/approle/test/login",
-				defaultEnvPrefix + AuthMethodEnv: "k8s",
+				PathEnv:       "auth/approle/test/login",
+				AuthMethodEnv: "k8s",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_ROLE missing"),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing path and auth method",
 			env: map[string]string{
-				defaultEnvPrefix + RoleEnv: "test-app-role",
+				RoleEnv: "test-app-role",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH, VAULT_AUTH_METHOD missing"),
 		},
@@ -104,7 +104,7 @@ func TestConfig(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 
-			config, err := NewConfig()
+			config, err := LoadConfig()
 			if err != nil {
 				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
 			}

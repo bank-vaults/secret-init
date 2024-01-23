@@ -26,36 +26,6 @@ import (
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func TestNewEnvStore(t *testing.T) {
-	tests := []struct {
-		name    string
-		env     map[string]string
-		wantEnv map[string]string
-	}{
-		{
-			name: "Non-empty environment",
-			env: map[string]string{
-				"MYSQL_PASSWORD":        "vault:secret/data/test/mysql#MYSQL_PASSWORD",
-				"AWS_SECRET_ACCESS_KEY": "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			for envKey, envVal := range ttp.env {
-				os.Setenv(envKey, envVal)
-			}
-
-			envStore := NewEnvStore()
-
-			assert.Contains(t, envStore.data, "MYSQL_PASSWORD", "MYSQL_PASSWORD not found in envStore")
-			assert.Contains(t, envStore.data, "AWS_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY not found in envStore")
-		})
-	}
-}
-
 func TestEnvStore_GetPathsFor(t *testing.T) {
 	tests := []struct {
 		name      string

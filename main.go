@@ -41,7 +41,7 @@ import (
 func NewProvider(providerName string, daemonMode bool) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		config := file.NewConfig()
+		config := file.LoadConfig()
 		provider, err := file.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create file provider: %w", err)
@@ -49,7 +49,7 @@ func NewProvider(providerName string, daemonMode bool) (provider.Provider, error
 		return provider, nil
 
 	case vault.ProviderName:
-		config, err := vault.NewConfig()
+		config, err := vault.LoadConfig()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
@@ -67,7 +67,7 @@ func NewProvider(providerName string, daemonMode bool) (provider.Provider, error
 
 func main() {
 	// Load application config
-	config, err := config.NewConfig()
+	config, err := config.LoadConfig()
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to load config: %w", err).Error())
 		os.Exit(1)

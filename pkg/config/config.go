@@ -22,16 +22,12 @@ import (
 )
 
 const (
-	// The DefaultEnvPrefix will be prefixed to envs below as PREFIX + ENV
-	// This applies to both the app and the providers
-	defaultEnvPrefix = "SECRET_INIT_"
-
-	LogLevelEnv  = "LOG_LEVEL"
-	JSONLogEnv   = "JSON_LOG"
-	LogServerEnv = "LOG_SERVER"
-	DaemonEnv    = "DAEMON"
-	DelayEnv     = "DELAY"
-	ProviderEnv  = "PROVIDER"
+	LogLevelEnv  = "SECRET_INIT_LOG_LEVEL"
+	JSONLogEnv   = "SECRET_INIT_JSON_LOG"
+	LogServerEnv = "SECRET_INIT_LOG_SERVER"
+	DaemonEnv    = "SECRET_INIT_DAEMON"
+	DelayEnv     = "SECRET_INIT_DELAY"
+	ProviderEnv  = "SECRET_INIT_PROVIDER"
 )
 
 type Config struct {
@@ -43,13 +39,13 @@ type Config struct {
 	Provider  string        `json:"provider"`
 }
 
-func NewConfig() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	return &Config{
-		LogLevel:  os.Getenv(defaultEnvPrefix + LogLevelEnv),
-		JSONLog:   cast.ToBool(os.Getenv(defaultEnvPrefix + JSONLogEnv)),
-		LogServer: os.Getenv(defaultEnvPrefix + LogServerEnv),
-		Daemon:    cast.ToBool(os.Getenv(defaultEnvPrefix + DaemonEnv)),
-		Delay:     cast.ToDuration(os.Getenv(defaultEnvPrefix + DelayEnv)),
-		Provider:  os.Getenv(defaultEnvPrefix + ProviderEnv),
+		LogLevel:  os.Getenv(LogLevelEnv),
+		JSONLog:   cast.ToBool(os.Getenv(JSONLogEnv)),
+		LogServer: os.Getenv(LogServerEnv),
+		Daemon:    cast.ToBool(os.Getenv(DaemonEnv)),
+		Delay:     cast.ToDuration(os.Getenv(DelayEnv)),
+		Provider:  os.Getenv(ProviderEnv),
 	}, nil
 }

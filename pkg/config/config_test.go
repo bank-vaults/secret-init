@@ -30,11 +30,11 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid configuration",
 			env: map[string]string{
-				defaultEnvPrefix + LogLevelEnv:  "debug",
-				defaultEnvPrefix + JSONLogEnv:   "true",
-				defaultEnvPrefix + LogServerEnv: "",
-				defaultEnvPrefix + DaemonEnv:    "true",
-				defaultEnvPrefix + ProviderEnv:  "vault",
+				LogLevelEnv:  "debug",
+				JSONLogEnv:   "true",
+				LogServerEnv: "",
+				DaemonEnv:    "true",
+				ProviderEnv:  "vault",
 			},
 			wantConfig: &Config{
 				LogLevel:  "debug",
@@ -53,7 +53,7 @@ func TestConfig(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 
-			config, err := NewConfig()
+			config, err := LoadConfig()
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
