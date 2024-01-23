@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package envstore
+package main
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ func TestEnvStore_GetPathsFor(t *testing.T) {
 
 			envStore := NewEnvStore()
 
-			paths, err := envStore.GetPathsFor(ttp.provider)
+			paths, err := envStore.GetProviderPaths(ttp.provider)
 			if err != nil {
 				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
 			}
@@ -139,7 +139,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 
 			envStore := NewEnvStore()
 
-			secretsEnv, err := envStore.GetProviderSecrets(ttp.provider, ttp.secrets)
+			secretsEnv, err := envStore.ConvertProviderSecrets(ttp.provider, ttp.secrets)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

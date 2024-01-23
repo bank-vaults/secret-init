@@ -30,15 +30,13 @@ import (
 	slogmulti "github.com/samber/slog-multi"
 	slogsyslog "github.com/samber/slog-syslog"
 
-	"github.com/bank-vaults/secret-init/pkg/args"
-	"github.com/bank-vaults/secret-init/pkg/config"
-	"github.com/bank-vaults/secret-init/pkg/envstore"
+	"github.com/bank-vaults/secret-init/common"
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func NewProvider(providerName string, daemonMode bool) (provider.Provider, error) {
+func NewProvider(providerName string) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
 		config := file.LoadConfig()
@@ -54,7 +52,7 @@ func NewProvider(providerName string, daemonMode bool) (provider.Provider, error
 			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
 
-		provider, err := vault.NewProvider(config, daemonMode)
+		provider, err := vault.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
@@ -67,7 +65,7 @@ func NewProvider(providerName string, daemonMode bool) (provider.Provider, error
 
 func main() {
 	// Load application config
-	config, err := config.LoadConfig()
+	config, err := common.LoadConfig()
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to load config: %w", err).Error())
 		os.Exit(1)
@@ -76,7 +74,7 @@ func main() {
 	initLogger(config)
 
 	// Get entrypoint data from arguments
-	binaryPath, binaryArgs, err := args.ExtractEntrypoint(os.Args)
+	binaryPath, binaryArgs, err := ExtractEntrypoint(os.Args)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to extract entrypoint: %w", err).Error())
 		os.Exit(1)
@@ -84,15 +82,15 @@ func main() {
 
 	// Create requested provider and extract relevant secret data
 	// TODO(csatib02): Implement multi-provider support
-	provider, err := NewProvider(config.Provider, config.Daemon)
+	provider, err := NewProvider(config.Provider)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 		os.Exit(1)
 	}
 
-	envStore := envstore.NewEnvStore()
+	envStore := NewEnvStore()
 
-	providerPaths, err := envStore.GetPathsFor(provider)
+	providerPaths, err := envStore.GetProviderPaths(provider)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to extract paths: %w", err).Error())
 		os.Exit(1)
@@ -104,7 +102,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	secretsEnv, err := envStore.GetProviderSecrets(provider, providerSecrets)
+	secretsEnv, err := envStore.ConvertProviderSecrets(provider, providerSecrets)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to convert secrets to envs: %w", err).Error())
 		os.Exit(1)
@@ -126,6 +124,8 @@ func main() {
 			slog.Error(fmt.Errorf("failed to exec process: %w", err).Error())
 			os.Exit(1)
 		}
+
+		return // exit on done
 	}
 
 	// Execute in daemon mode
@@ -184,7 +184,7 @@ func main() {
 	os.Exit(cmd.ProcessState.ExitCode())
 }
 
-func initLogger(config *config.Config) {
+func initLogger(config *common.Config) {
 	var level slog.Level
 
 	err := level.UnmarshalText([]byte(config.LogLevel))
@@ -239,5 +239,7 @@ func initLogger(config *config.Config) {
 	logger := slog.New(router.Handler())
 	logger = logger.With(slog.String("app", "vault-secret-init"))
 
+	// Set the default logger to the configured logger,
+	// enabling direct usage of the slog package for logging.
 	slog.SetDefault(logger)
 }

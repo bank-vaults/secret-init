@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package envstore
+package main
 
 import (
 	"fmt"
@@ -24,6 +24,8 @@ import (
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
+// EnvStore is a helper for managing interactions between environment variables and providers,
+// including tasks like extracting provider-specific paths and retrieving secrets.
 type EnvStore struct {
 	data map[string]string
 }
@@ -42,7 +44,7 @@ func NewEnvStore() *EnvStore {
 	}
 }
 
-func (s *EnvStore) GetPathsFor(provider provider.Provider) ([]string, error) {
+func (s *EnvStore) GetProviderPaths(provider provider.Provider) ([]string, error) {
 	var secretPaths []string
 
 	for envKey, path := range s.data {
@@ -62,13 +64,15 @@ func (s *EnvStore) GetPathsFor(provider provider.Provider) ([]string, error) {
 	return secretPaths, nil
 }
 
-func (s *EnvStore) GetProviderSecrets(provider provider.Provider, secrets []provider.Secret) ([]string, error) {
+// ConvertProviderSecrets converts the loaded secrets to environment variables
+// In case of the Vault provider, the secrets are already in the correct format
+func (s *EnvStore) ConvertProviderSecrets(provider provider.Provider, secrets []provider.Secret) ([]string, error) {
 	switch provider.GetProviderName() {
 	case vault.ProviderName:
 		// The Vault provider already returns the secrets with the environment variable keys
 		var vaultEnv []string
 		for _, secret := range secrets {
-			vaultEnv = append(vaultEnv, secret.Format())
+			vaultEnv = append(vaultEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
 		}
 		return vaultEnv, nil
 
@@ -111,9 +115,8 @@ func createSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]
 		if !ok {
 			return nil, fmt.Errorf("failed to find environment variable key for secret path: %s", path)
 		}
-		secret.Path = key
 
-		secretsEnv = append(secretsEnv, secret.Format())
+		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, secret.Value))
 	}
 
 	return secretsEnv, nil
