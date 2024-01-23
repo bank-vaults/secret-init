@@ -35,11 +35,10 @@ func TestMain(m *testing.M) {
 
 func TestNewProvider(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     *Config
-		daemonMode bool
-		err        error
-		wantType   bool
+		name     string
+		config   *Config
+		err      error
+		wantType bool
 	}{
 		{
 			name: "Valid Provider with Token",
@@ -54,8 +53,18 @@ func TestNewProvider(t *testing.T) {
 				FromPath:             "secret/data/test",
 				RevokeToken:          true,
 			},
-			daemonMode: true,
-			wantType:   true,
+			wantType: true,
+		},
+		{
+			name: "Valid Provider with vault:login as Token and daemon mode",
+			config: &Config{
+				IsLogin:              true,
+				Token:                vaultLogin,
+				TokenFile:            "root",
+				IgnoreMissingSecrets: true,
+				FromPath:             "secret/data/test",
+			},
+			wantType: true,
 		},
 		{
 			name:   "Fail to create vault client due to timeout",
