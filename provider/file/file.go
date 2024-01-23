@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
@@ -38,12 +37,11 @@ func NewProvider(config *Config) (provider.Provider, error) {
 		return nil, fmt.Errorf("failed to access path: %w", err)
 	}
 
-	// When the provided path points to a file, the parent directory is considered as the mount path.
-	if fileInfo.IsDir() {
-		return &Provider{fs: os.DirFS(config.MountPath)}, nil
+	if !fileInfo.IsDir() {
+		return nil, fmt.Errorf("provided path is not a directory")
 	}
 
-	return &Provider{fs: os.DirFS(filepath.Dir(config.MountPath))}, nil
+	return &Provider{fs: os.DirFS(config.MountPath)}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
@@ -64,6 +62,10 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return secrets, nil
 }
 
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}
+
 func (p *Provider) getSecretFromFile(path string) (string, error) {
 	path = strings.TrimLeft(path, "/")
 	content, err := fs.ReadFile(p.fs, path)
@@ -72,8 +74,4 @@ func (p *Provider) getSecretFromFile(path string) (string, error) {
 	}
 
 	return string(content), nil
-}
-
-func (p *Provider) GetProviderName() string {
-	return ProviderName
 }

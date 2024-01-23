@@ -32,7 +32,7 @@ type Config struct {
 func LoadConfig() *Config {
 	mountPath, ok := os.LookupEnv(MountPathEnv)
 	if !ok {
-		slog.Warn("mount path not provided, using default", slog.String("mount-path", defaultMountPath))
+		slog.Warn("file provider mount path not provided, using default", slog.String("mount-path", defaultMountPath))
 		mountPath = defaultMountPath
 	}
 

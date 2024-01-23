@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -56,19 +55,11 @@ func TestNewProvider(t *testing.T) {
 			err: fmt.Errorf("failed to access path: stat test/secrets/invalid: no such file or directory"),
 		},
 		{
-			name: "Valid config - file",
+			name: "Invalid config - file instead of directory",
 			config: &Config{
 				MountPath: secretFile,
 			},
-			wantType: true,
-			wantFs:   os.DirFS(filepath.Dir(secretFile)),
-		},
-		{
-			name: "Invalid config - file does not exist",
-			config: &Config{
-				MountPath: filepath.Dir(secretFile) + "/invalid",
-			},
-			err: fmt.Errorf("failed to access path: stat " + filepath.Dir(secretFile) + "/invalid" + ": no such file or directory"),
+			err: fmt.Errorf("provided path is not a directory"),
 		},
 	}
 
