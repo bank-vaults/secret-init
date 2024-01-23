@@ -106,7 +106,7 @@ func TestConfig(t *testing.T) {
 
 			config, err := LoadConfig()
 			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
 
 			if ttp.wantConfig != nil {
@@ -123,15 +123,11 @@ func TestConfig(t *testing.T) {
 
 func newTokenFile(t *testing.T) string {
 	tokenFile, err := os.CreateTemp("", "vault-token")
-	if err != nil {
-		t.Fatalf("Failed to create a temporary token file: %v", err)
-	}
+	assert.Nil(t, err, "Failed to create a temporary token file")
 	defer tokenFile.Close()
 
 	_, err = tokenFile.Write([]byte("root"))
-	if err != nil {
-		t.Fatalf("Failed to write to a temporary token file: %v", err)
-	}
+	assert.Nil(t, err, "Failed to write to a temporary token file")
 
 	return tokenFile.Name()
 }

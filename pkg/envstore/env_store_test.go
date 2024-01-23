@@ -141,7 +141,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 
 			secretsEnv, err := envStore.GetProviderSecrets(ttp.provider, ttp.secrets)
 			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
 
 			if ttp.wantSecrets != nil {

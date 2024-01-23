@@ -30,10 +30,16 @@ func TestExtractEntrypoint(t *testing.T) {
 		err                error
 	}{
 		{
-			name:               "Valid case with arguments",
+			name:               "Valid case with one argument",
 			args:               []string{"secret-init", "env"},
 			expectedBinaryPath: "/usr/bin/env",
 			expectedBinaryArgs: []string{"env"},
+		},
+		{
+			name:               "Valid case with more than two arguments",
+			args:               []string{"secret-init", "env", "|", "grep", "secrets"},
+			expectedBinaryPath: "/usr/bin/env",
+			expectedBinaryArgs: []string{"env", "|", "grep", "secrets"},
 		},
 		{
 			name: "Invalid case - no arguments",
@@ -52,7 +58,7 @@ func TestExtractEntrypoint(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			binaryPath, binaryArgs, err := ExtractEntrypoint(ttp.args)
 			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			} else {
 				assert.Equal(t, ttp.expectedBinaryPath, binaryPath, "Unexpected binary path")
 				assert.Equal(t, ttp.expectedBinaryArgs, binaryArgs, "Unexpected binary args")

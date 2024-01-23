@@ -132,7 +132,7 @@ func TestLoadSecrets(t *testing.T) {
 			provider := Provider{fs: fs}
 			secrets, err := provider.LoadSecrets(context.Background(), ttp.paths)
 			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
 			if ttp.wantSecrets != nil {
 				assert.ElementsMatch(t, ttp.wantSecrets, secrets, "Unexpected secrets")
@@ -143,20 +143,15 @@ func TestLoadSecrets(t *testing.T) {
 
 func newSecretFile(t *testing.T, content string) string {
 	dir := t.TempDir() + "/test/secrets"
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		t.Fatalf("Failed to create directory %s: %v", dir, err)
-	}
+	err := os.MkdirAll(dir, 0755)
+	assert.Nil(t, err, "Failed to create directory")
 
 	file, err := os.CreateTemp(dir, "secret.txt")
-	if err != nil {
-		t.Fatalf("Failed to create a temporary file: %v", err)
-	}
+	assert.Nil(t, err, "Failed to create a temporary file")
 	defer file.Close()
 
 	_, err = file.WriteString(content)
-	if err != nil {
-		t.Fatalf("Failed to write to the temporary file: %v", err)
-	}
+	assert.Nil(t, err, "Failed to write to the temporary file")
 
 	return file.Name()
 }

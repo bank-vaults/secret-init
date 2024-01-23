@@ -84,7 +84,7 @@ func TestNewProvider(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			provider, err := NewProvider(ttp.config, ttp.daemonMode)
 			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
 			if ttp.wantType {
 				assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")

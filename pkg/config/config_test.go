@@ -54,9 +54,7 @@ func TestConfig(t *testing.T) {
 			}
 
 			config, err := LoadConfig()
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
+			assert.Nil(t, err, "Unexpected error")
 
 			assert.Equal(t, ttp.wantConfig, config, "Unexpected config")
 
