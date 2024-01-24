@@ -52,8 +52,8 @@ func (s *sanitized) append(key string, value string) {
 	// it is not a VAULT_* variable.
 	// Additionally, in a login scenario, we include VAULT_* variables in the secrets list.
 	if !ok || (s.login && envType.login) {
-		// Path here is actually the secret's key
-		// (the environment variable name)
+		// Path here is actually the secret's key,
+		// An example of this can be found at the LoadSecrets() function below
 		secret := provider.Secret{
 			Path:  key,
 			Value: value,
@@ -63,7 +63,6 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-// passing daemonMode is a dirty way for now to avoid dependency
 func NewProvider(config *Config) (provider.Provider, error) {
 	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
@@ -118,9 +117,11 @@ func NewProvider(config *Config) (provider.Provider, error) {
 }
 
 // LoadSecret's path formatting: <key>=<path>
-// This formatting is necessary because the injector expects a map of key:value pairs.
+// This formatting is necessary because the injector expects a map of key=value pairs.
 // It also returns a map of key:value pairs, where the key is the environment variable name
 // and the value is the secret value
+// E.g. paths: MYSQL_PASSWORD=secret/data/mysql/password
+// returns: []provider.Secret{provider.Secret{Path: "MYSQL_PASSWORD", Value: "password"}}
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
 	sanitized := sanitized{login: p.isLogin}
 	vaultEnviron := parsePathsToMap(paths)

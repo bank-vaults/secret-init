@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// The special value for SECRET_INIT which marks
+	// The special value for VAULT_TOKEN which marks
 	// that the login token needs to be passed through to the application
 	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"

@@ -33,7 +33,7 @@ func ExtractEntrypoint(args []string) (string, []string, error) {
 
 	var binaryArgs []string
 	if len(args) >= 2 {
-		binaryArgs = args[1:] // Include the provided CLI command in the argument list
+		binaryArgs = args[2:] // returns the arguments for the binary
 	}
 
 	return binaryPath, binaryArgs, nil

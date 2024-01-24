@@ -24,7 +24,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"slices"
-	"syscall"
 	"time"
 
 	slogmulti "github.com/samber/slog-multi"
@@ -117,20 +116,6 @@ func main() {
 
 	slog.Info("spawning process for provided entrypoint command")
 
-	if !config.Daemon {
-		// When running in non-daemon mode, the process should exit on finish
-		err = syscall.Exec(binaryPath, binaryArgs, secretsEnv)
-		if err != nil {
-			slog.Error(fmt.Errorf("failed to exec process: %w", err).Error())
-			os.Exit(1)
-		}
-
-		return // exit on done
-	}
-
-	// Execute in daemon mode
-	slog.Info("running in daemon mode")
-
 	cmd := exec.Command(binaryPath, binaryArgs...)
 	cmd.Env = append(os.Environ(), secretsEnv...)
 	cmd.Stdin = os.Stdin
@@ -146,24 +131,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	go func() {
-		for sig := range sigs {
-			// We don't want to signal a non-running process.
-			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
-				break
-			}
+	if config.Daemon {
+		// in daemon mode, pass signals to the actual process
+		slog.Info("running in daemon mode")
 
-			slog.Info("received signal", slog.String("signal", sig.String()))
+		go func() {
+			for sig := range sigs {
+				slog.Info("received signal", slog.String("signal", sig.String()))
 
-			err := cmd.Process.Signal(sig)
-			if err != nil {
-				slog.Warn(
-					fmt.Errorf("failed to signal process: %w", err).Error(),
-					slog.String("signal", sig.String()),
-				)
+				// We don't want to signal a non-running process.
+				if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+					break
+				}
+
+				err := cmd.Process.Signal(sig)
+				if err != nil {
+					slog.Warn(
+						fmt.Errorf("failed to signal process: %w", err).Error(),
+						slog.String("signal", sig.String()),
+					)
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	err = cmd.Wait()
 

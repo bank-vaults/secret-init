@@ -25,7 +25,7 @@ import (
 )
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
-// including tasks like extracting provider-specific paths and retrieving secrets.
+// including tasks like extracting and converting provider-specific paths and secrets.
 type EnvStore struct {
 	data map[string]string
 }

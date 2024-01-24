@@ -33,13 +33,13 @@ func TestExtractEntrypoint(t *testing.T) {
 			name:               "Valid case with one argument",
 			args:               []string{"secret-init", "env"},
 			expectedBinaryPath: "/usr/bin/env",
-			expectedBinaryArgs: []string{"env"},
+			expectedBinaryArgs: []string{},
 		},
 		{
 			name:               "Valid case with more than two arguments",
 			args:               []string{"secret-init", "env", "|", "grep", "secrets"},
 			expectedBinaryPath: "/usr/bin/env",
-			expectedBinaryArgs: []string{"env", "|", "grep", "secrets"},
+			expectedBinaryArgs: []string{"|", "grep", "secrets"},
 		},
 		{
 			name: "Invalid case - no arguments",

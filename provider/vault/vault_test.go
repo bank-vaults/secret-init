@@ -15,8 +15,8 @@
 package vault
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"testing"
@@ -92,8 +92,7 @@ func setupTestLogger() {
 	originalLogger = slog.Default()
 
 	// Redirect logs to avoid polluting the test output
-	var buf bytes.Buffer
-	handler := slog.NewTextHandler(&buf, nil)
+	handler := slog.NewTextHandler(io.Discard, nil)
 	testLogger := slog.New(handler)
 	slog.SetDefault(testLogger)
 }
