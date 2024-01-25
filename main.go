@@ -24,162 +24,121 @@ import (
 	"os/exec"
 	"os/signal"
 	"slices"
-	"syscall"
 	"time"
 
 	slogmulti "github.com/samber/slog-multi"
 	slogsyslog "github.com/samber/slog-syslog"
-	"github.com/spf13/cast"
 
+	"github.com/bank-vaults/secret-init/common"
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
+	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
 func NewProvider(providerName string) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
-		provider, err := file.NewProvider(os.DirFS("/"))
+		config := file.LoadConfig()
+		provider, err := file.NewProvider(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create file provider: %w", err)
+		}
+		return provider, nil
+
+	case vault.ProviderName:
+		config, err := vault.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
 
+		provider, err := vault.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault provider: %w", err)
+		}
 		return provider, nil
 
 	default:
-		return nil, errors.New("invalid provider specified")
+		return nil, fmt.Errorf("provider %s not supported", providerName)
 	}
 }
 
 func main() {
-	var logger *slog.Logger
-	{
-		var level slog.Level
-
-		err := level.UnmarshalText([]byte(os.Getenv("VAULT_LOG_LEVEL")))
-		if err != nil { // Silently fall back to info level
-			level = slog.LevelInfo
-		}
-
-		levelFilter := func(levels ...slog.Level) func(ctx context.Context, r slog.Record) bool {
-			return func(ctx context.Context, r slog.Record) bool {
-				return slices.Contains(levels, r.Level)
-			}
-		}
-
-		router := slogmulti.Router()
-
-		if cast.ToBool(os.Getenv("VAULT_JSON_LOG")) {
-			// Send logs with level higher than warning to stderr
-			router = router.Add(
-				slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
-				levelFilter(slog.LevelWarn, slog.LevelError),
-			)
-
-			// Send info and debug logs to stdout
-			router = router.Add(
-				slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-				levelFilter(slog.LevelDebug, slog.LevelInfo),
-			)
-		} else {
-			// Send logs with level higher than warning to stderr
-			router = router.Add(
-				slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
-				levelFilter(slog.LevelWarn, slog.LevelError),
-			)
-
-			// Send info and debug logs to stdout
-			router = router.Add(
-				slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-				levelFilter(slog.LevelDebug, slog.LevelInfo),
-			)
-		}
-
-		if logServerAddr := os.Getenv("VAULT_ENV_LOG_SERVER"); logServerAddr != "" {
-			writer, err := net.Dial("udp", logServerAddr)
-
-			// We silently ignore syslog connection errors for the lack of a better solution
-			if err == nil {
-				router = router.Add(slogsyslog.Option{Level: slog.LevelInfo, Writer: writer}.NewSyslogHandler())
-			}
-		}
-
-		// TODO: add level filter handler
-		logger = slog.New(router.Handler())
-		logger = logger.With(slog.String("app", "vault-secret-init"))
-
-		slog.SetDefault(logger)
-	}
-
-	provider, err := NewProvider(os.Getenv("PROVIDER"))
+	// Load application config
+	config, err := common.LoadConfig()
 	if err != nil {
-		logger.Error(fmt.Errorf("failed to create provider: %w", err).Error())
-
+		slog.Error(fmt.Errorf("failed to load config: %w", err).Error())
 		os.Exit(1)
 	}
 
-	if len(os.Args) == 1 {
-		logger.Error("no command is given, vault-env can't determine the entrypoint (command), please specify it explicitly or let the webhook query it (see documentation)")
+	initLogger(config)
 
-		os.Exit(1)
-	}
-
-	daemonMode := cast.ToBool(os.Getenv("VAULT_ENV_DAEMON"))
-	delayExec := cast.ToDuration(os.Getenv("VAULT_ENV_DELAY"))
-
-	entrypointCmd := os.Args[1:]
-
-	binary, err := exec.LookPath(entrypointCmd[0])
+	// Get entrypoint data from arguments
+	binaryPath, binaryArgs, err := ExtractEntrypoint(os.Args)
 	if err != nil {
-		logger.Error("binary not found", slog.String("binary", entrypointCmd[0]))
-
+		slog.Error(fmt.Errorf("failed to extract entrypoint: %w", err).Error())
 		os.Exit(1)
 	}
 
-	environ := GetEnvironMap()
-	paths := ExtractPathsFromEnvs(environ)
-
-	ctx := context.Background()
-	secrets, err := provider.LoadSecrets(ctx, paths)
+	// Create requested provider and extract relevant secret data
+	// TODO(csatib02): Implement multi-provider support
+	provider, err := NewProvider(config.Provider)
 	if err != nil {
-		logger.Error(fmt.Errorf("failed to load secrets from provider: %w", err).Error())
-
+		slog.Error(fmt.Errorf("failed to create provider: %w", err).Error())
 		os.Exit(1)
 	}
-	secretsEnv, err := CreateSecretEnvsFrom(environ, secrets)
+
+	envStore := NewEnvStore()
+
+	providerPaths, err := envStore.GetProviderPaths(provider)
 	if err != nil {
-		logger.Error(fmt.Errorf("failed to create environment variables from loaded secrets: %w", err).Error())
-
+		slog.Error(fmt.Errorf("failed to extract paths: %w", err).Error())
 		os.Exit(1)
 	}
+
+	providerSecrets, err := provider.LoadSecrets(context.Background(), providerPaths)
+	if err != nil {
+		slog.Error(fmt.Errorf("failed to load secrets: %w", err).Error())
+		os.Exit(1)
+	}
+
+	secretsEnv, err := envStore.ConvertProviderSecrets(provider, providerSecrets)
+	if err != nil {
+		slog.Error(fmt.Errorf("failed to convert secrets to envs: %w", err).Error())
+		os.Exit(1)
+	}
+
+	// Delay if needed
+	// NOTE(ramizpolic): any specific reason why this is here?
+	if config.Delay > 0 {
+		slog.Info(fmt.Sprintf("sleeping for %s...", config.Delay))
+		time.Sleep(config.Delay)
+	}
+
+	slog.Info("spawning process for provided entrypoint command")
+
+	cmd := exec.Command(binaryPath, binaryArgs...)
+	cmd.Env = append(os.Environ(), secretsEnv...)
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 
 	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs)
 
-	if delayExec > 0 {
-		logger.Info(fmt.Sprintf("sleeping for %s...", delayExec))
-		time.Sleep(delayExec)
+	err = cmd.Start()
+	if err != nil {
+		slog.Error(fmt.Errorf("failed to start process: %w", err).Error())
+		os.Exit(1)
 	}
 
-	logger.Info("spawning process", slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
-
-	if daemonMode {
-		logger.Info("in daemon mode...")
-		cmd := exec.Command(binary, entrypointCmd[1:]...)
-		cmd.Env = append(os.Environ(), secretsEnv...)
-		cmd.Stdin = os.Stdin
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-
-		signal.Notify(sigs)
-
-		err = cmd.Start()
-		if err != nil {
-			logger.Error(fmt.Errorf("failed to start process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
-
-			os.Exit(1)
-		}
+	if config.Daemon {
+		// in daemon mode, pass signals to the actual process
+		slog.Info("running in daemon mode")
 
 		go func() {
 			for sig := range sigs {
+				slog.Info("received signal", slog.String("signal", sig.String()))
+
 				// We don't want to signal a non-running process.
 				if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
 					break
@@ -187,36 +146,90 @@ func main() {
 
 				err := cmd.Process.Signal(sig)
 				if err != nil {
-					logger.Warn(fmt.Errorf("failed to signal process: %w", err).Error(), slog.String("signal", sig.String()))
-				} else {
-					logger.Info("received signal", slog.String("signal", sig.String()))
+					slog.Warn(
+						fmt.Errorf("failed to signal process: %w", err).Error(),
+						slog.String("signal", sig.String()),
+					)
 				}
 			}
 		}()
+	}
 
-		err = cmd.Wait()
+	err = cmd.Wait()
 
-		close(sigs)
+	close(sigs)
 
-		if err != nil {
-			exitCode := -1
-			// try to get the original exit code if possible
-			var exitError *exec.ExitError
-			if errors.As(err, &exitError) {
-				exitCode = exitError.ExitCode()
-			}
+	if err != nil {
+		slog.Error(fmt.Errorf("failed to exec process: %w", err).Error())
 
-			logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
-
-			os.Exit(exitCode)
+		// Exit with the original exit code if possible
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.ExitCode())
 		}
 
-		os.Exit(cmd.ProcessState.ExitCode())
+		os.Exit(-1)
 	}
-	err = syscall.Exec(binary, entrypointCmd, secretsEnv)
-	if err != nil {
-		logger.Error(fmt.Errorf("failed to exec process: %w", err).Error(), slog.String("entrypoint", fmt.Sprint(entrypointCmd)))
 
-		os.Exit(1)
+	os.Exit(cmd.ProcessState.ExitCode())
+}
+
+func initLogger(config *common.Config) {
+	var level slog.Level
+
+	err := level.UnmarshalText([]byte(config.LogLevel))
+	if err != nil { // Silently fall back to info level
+		level = slog.LevelInfo
 	}
+
+	levelFilter := func(levels ...slog.Level) func(ctx context.Context, r slog.Record) bool {
+		return func(ctx context.Context, r slog.Record) bool {
+			return slices.Contains(levels, r.Level)
+		}
+	}
+
+	router := slogmulti.Router()
+
+	if config.JSONLog {
+		// Send logs with level higher than warning to stderr
+		router = router.Add(
+			slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+			levelFilter(slog.LevelWarn, slog.LevelError),
+		)
+
+		// Send info and debug logs to stdout
+		router = router.Add(
+			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			levelFilter(slog.LevelDebug, slog.LevelInfo),
+		)
+	} else {
+		// Send logs with level higher than warning to stderr
+		router = router.Add(
+			slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+			levelFilter(slog.LevelWarn, slog.LevelError),
+		)
+
+		// Send info and debug logs to stdout
+		router = router.Add(
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			levelFilter(slog.LevelDebug, slog.LevelInfo),
+		)
+	}
+
+	if config.LogServer != "" {
+		writer, err := net.Dial("udp", config.LogServer)
+
+		// We silently ignore syslog connection errors for the lack of a better solution
+		if err == nil {
+			router = router.Add(slogsyslog.Option{Level: slog.LevelInfo, Writer: writer}.NewSyslogHandler())
+		}
+	}
+
+	// TODO: add level filter handler
+	logger := slog.New(router.Handler())
+	logger = logger.With(slog.String("app", "vault-secret-init"))
+
+	// Set the default logger to the configured logger,
+	// enabling direct usage of the slog package for logging.
+	slog.SetDefault(logger)
 }

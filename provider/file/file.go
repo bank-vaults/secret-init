@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"strings"
 
 	"github.com/bank-vaults/secret-init/provider"
@@ -29,12 +30,18 @@ type Provider struct {
 	fs fs.FS
 }
 
-func NewProvider(fs fs.FS) (provider.Provider, error) {
-	if fs == nil {
-		return nil, fmt.Errorf("file system is nil")
+func NewProvider(config *Config) (provider.Provider, error) {
+	// Check whether the path exists
+	fileInfo, err := os.Stat(config.MountPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access path: %w", err)
 	}
 
-	return &Provider{fs: fs}, nil
+	if !fileInfo.IsDir() {
+		return nil, fmt.Errorf("provided path is not a directory")
+	}
+
+	return &Provider{fs: os.DirFS(config.MountPath)}, nil
 }
 
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
@@ -55,9 +62,13 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return secrets, nil
 }
 
-func (p *Provider) getSecretFromFile(filepath string) (string, error) {
-	filepath = strings.TrimLeft(filepath, "/")
-	content, err := fs.ReadFile(p.fs, filepath)
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}
+
+func (p *Provider) getSecretFromFile(path string) (string, error) {
+	path = strings.TrimLeft(path, "/")
+	content, err := fs.ReadFile(p.fs, path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
