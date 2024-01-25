@@ -91,9 +91,8 @@ func TestNewProvider(t *testing.T) {
 func setupTestLogger() {
 	originalLogger = slog.Default()
 
-	// Redirect logs to avoid polluting the test output
-	handler := slog.NewTextHandler(io.Discard, nil)
-	testLogger := slog.New(handler)
+	// Discard logs to avoid polluting the test output
+	testLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	slog.SetDefault(testLogger)
 }
 

@@ -35,6 +35,7 @@
               gnumake
 
               # golangci-lint
+              (bats.withLibraries (p: [ p.bats-support p.bats-assert ]))
               goreleaser
 
               # TODO: remove once https://github.com/NixOS/nixpkgs/pull/254878 hits unstable
