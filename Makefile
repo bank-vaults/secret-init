@@ -90,7 +90,7 @@ license-check: ## Run license check
 
 ##@ Dependencies
 
-deps: bin/golangci-lint bin/licensei bin/goreleaser
+deps: bin/golangci-lint bin/licensei bin/goreleaser bin/bats 
 deps: ## Install dependencies
 
 bin/golangci-lint:
@@ -105,5 +105,13 @@ bin/goreleaser:
 	@mkdir -p bin
 	@mkdir -p tmpgoreleaser
 	curl -sfL https://goreleaser.com/static/run | VERSION=v${GORELEASER_VERSION} TMPDIR=${PWD}/tmpgoreleaser bash -s -- --version
-	mv tmpgoreleaser/goreleaser bin/
+	@mv tmpgoreleaser/goreleaser bin/
 	@rm -rf tmpgoreleaser
+
+bin/bats:
+	@mkdir -p bin
+	@mkdir -p tmpbats
+	git clone https://github.com/bats-core/bats-core.git tmpbats
+	@cd tmpbats && bash ./install.sh ${PWD}/bin
+	@mv bin/bin/bats bin/ && rm -rf bin/bin
+	@rm -rf tmpbats
