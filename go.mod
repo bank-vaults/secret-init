@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	emperror.dev/errors v0.8.1
-	github.com/hashicorp/vault/api v1.10.0
+	github.com/hashicorp/vault/api v1.11.0
 	github.com/samber/slog-multi v1.0.2
 	github.com/samber/slog-syslog v1.0.0
 	github.com/spf13/cast v1.6.0
