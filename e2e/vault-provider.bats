@@ -103,7 +103,7 @@ check_process_status() {
 @test "secrets successfully loaded from vault using vault:login as token" {
   set_vault_token "vault:login"
   add_secrets_to_vault
-  
+
   run_output=$(./secret-init env | grep 'MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID')
   assert_success
 
@@ -123,7 +123,7 @@ check_process_status() {
   assert_output_contains "MYSQL_PASSWORD=3xtr3ms3cr3t" "$run_output"
   assert_output_contains "AWS_SECRET_ACCESS_KEY=s3cr3t" "$run_output"
   assert_output_contains "AWS_ACCESS_KEY_ID=secretId" "$run_output"
-  
+
   # Check if the process is still running in the background
   check_process_status "secret-init env"
   assert_success

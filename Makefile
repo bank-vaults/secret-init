@@ -5,7 +5,12 @@ export PATH := $(abspath bin/):${PATH}
 # Dependency versions
 GOLANGCI_VERSION = 1.53.3
 LICENSEI_VERSION = 0.8.0
+COSIGN_VERSION = 2.2.2
 GORELEASER_VERSION = 1.18.2
+BATS_VERSION = 1.2.1
+
+# GoReleaser distribution
+GORELEASER_DISTRIBUTION := oss
 
 ##@ General
 
@@ -90,7 +95,7 @@ license-check: ## Run license check
 
 ##@ Dependencies
 
-deps: bin/golangci-lint bin/licensei bin/goreleaser bin/bats 
+deps: bin/golangci-lint bin/licensei bin/cosign bin/goreleaser bin/bats
 deps: ## Install dependencies
 
 bin/golangci-lint:
@@ -101,17 +106,38 @@ bin/licensei:
 	@mkdir -p bin
 	curl -sfL https://raw.githubusercontent.com/goph/licensei/master/install.sh | bash -s -- v${LICENSEI_VERSION}
 
+bin/cosign:
+	@mkdir -p bin
+	@OS=$$(uname -s); \
+	case $$OS in \
+		"Linux") \
+			curl -sSfL https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64 -o bin/cosign; \
+			;; \
+		"Darwin") \
+			curl -sSfL https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-darwin-arm64 -o bin/cosign; \
+			;; \
+		*) \
+			echo "Unsupported OS: $$OS"; \
+			exit 1; \
+			;; \
+	esac
+	@chmod +x bin/cosign
+
 bin/goreleaser:
 	@mkdir -p bin
 	@mkdir -p tmpgoreleaser
-	curl -sfL https://goreleaser.com/static/run | VERSION=v${GORELEASER_VERSION} TMPDIR=${PWD}/tmpgoreleaser bash -s -- --version
-	@mv tmpgoreleaser/goreleaser bin/
+	curl -sfL https://goreleaser.com/static/run > tmpgoreleaser/goreleaser
+	sed -i '' -e 's|"\$$TMP_DIR/goreleaser" "\$$@"|mv "\$$TMP_DIR/goreleaser" "bin/"\nrm -rf "\$$TMP_DIR"|' tmpgoreleaser/goreleaser
+	bash tmpgoreleaser/goreleaser DISTRIBUTION=${GORELEASER_DISTRIBUTION} VERSION=v${GORELEASER_VERSION}
 	@rm -rf tmpgoreleaser
 
 bin/bats:
-	@mkdir -p bin
+	@mkdir -p bin/bats
 	@mkdir -p tmpbats
 	git clone https://github.com/bats-core/bats-core.git tmpbats
-	@cd tmpbats && bash ./install.sh ${PWD}/bin
-	@mv bin/bin/bats bin/ && rm -rf bin/bin
+	bash tmpbats/install.sh bin/bats
+	@ln -sF bin/bats/bin/bats bin/bats
 	@rm -rf tmpbats
+	git clone https://github.com/bats-core/bats-support.git bin/bats/libexec/bats-core/lib/bats-support
+	git clone https://github.com/bats-core/bats-assert.git bin/bats/libexec/bats-core/lib/bats-assert
+	@export BATS_LIB_PATH=${PWD}/bin/bats/libexec/bats-core/lib
