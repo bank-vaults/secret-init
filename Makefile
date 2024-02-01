@@ -66,7 +66,8 @@ test: ## Run tests
 
 .PHONY: test-e2e
 test-e2e: ## Run e2e tests
-	export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib && bats e2e
+	@export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib && \
+	bats e2e
 
 .PHONY: lint
 lint: lint-go lint-docker lint-yaml
@@ -127,7 +128,7 @@ bin/goreleaser:
 	@mkdir -p bin
 	@mkdir -p tmpgoreleaser
 	curl -sfL https://goreleaser.com/static/run > tmpgoreleaser/goreleaser
-	sed -i '' -e 's|"\$$TMP_DIR/goreleaser" "\$$@"|mv "\$$TMP_DIR/goreleaser" "bin/"\nrm -rf "\$$TMP_DIR"|' tmpgoreleaser/goreleaser
+	@sed -i '' -e 's|"\$$TMP_DIR/goreleaser" "\$$@"|mv "\$$TMP_DIR/goreleaser" "bin/"\nrm -rf "\$$TMP_DIR"|' tmpgoreleaser/goreleaser
 	bash tmpgoreleaser/goreleaser DISTRIBUTION=${GORELEASER_DISTRIBUTION} VERSION=v${GORELEASER_VERSION}
 	@rm -rf tmpgoreleaser
 
@@ -140,4 +141,3 @@ bin/bats:
 	@rm -rf tmpbats
 	git clone https://github.com/bats-core/bats-support.git bin/bats-core/libexec/bats-core/lib/bats-support
 	git clone https://github.com/bats-core/bats-assert.git bin/bats-core/libexec/bats-core/lib/bats-assert
-	export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib
