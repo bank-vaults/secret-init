@@ -13,13 +13,13 @@ setup() {
 }
 
 start_vault() {
-  docker-compose up -d
+  docker compose up -d
 
   # wait for Vault to be ready
   max_attempts=${MAX_ATTEMPTS:-10}
 
   for ((attempts = 0; attempts < max_attempts; attempts++)); do
-    if docker-compose exec -T "$vault_container_name"  vault status > /dev/null 2>&1; then
+    if docker compose exec -T "$vault_container_name"  vault status > /dev/null 2>&1; then
       break
     fi
     sleep 1
@@ -62,7 +62,7 @@ teardown() {
 
 stop_vault() {
   remove_secrets_from_vault
-  docker-compose down
+  docker compose down
 }
 
 remove_secrets_from_vault() {

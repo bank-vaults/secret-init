@@ -6,11 +6,8 @@ export PATH := $(abspath bin/):${PATH}
 GOLANGCI_VERSION = 1.53.3
 LICENSEI_VERSION = 0.8.0
 COSIGN_VERSION = 2.2.2
-GORELEASER_VERSION = 1.18.2
+GORELEASER_VERSION = 1.23.0
 BATS_VERSION = 1.2.1
-
-# GoReleaser distribution
-GORELEASER_DISTRIBUTION := oss
 
 ##@ General
 
@@ -53,7 +50,7 @@ container-image: ## Build container image
 
 .PHONY: binary-snapshot
 binary-snapshot: ## Build binary snapshot
-	goreleaser release --rm-dist --skip-publish --snapshot
+	VERSION=v${GORELEASER_VERSION} goreleaser release --clean --skip=publish --snapshot
 
 ##@ Checks
 
@@ -126,11 +123,8 @@ bin/cosign:
 
 bin/goreleaser:
 	@mkdir -p bin
-	@mkdir -p tmpgoreleaser
-	curl -sfL https://goreleaser.com/static/run > tmpgoreleaser/goreleaser
-	@sed -i '' -e 's|"\$$TMP_DIR/goreleaser" "\$$@"|mv "\$$TMP_DIR/goreleaser" "bin/"\nrm -rf "\$$TMP_DIR"|' tmpgoreleaser/goreleaser
-	bash tmpgoreleaser/goreleaser DISTRIBUTION=${GORELEASER_DISTRIBUTION} VERSION=v${GORELEASER_VERSION}
-	@rm -rf tmpgoreleaser
+	curl -sfL https://goreleaser.com/static/run -o bin/goreleaser
+	@chmod +x bin/goreleaser
 
 bin/bats:
 	@mkdir -p bin/bats-core
