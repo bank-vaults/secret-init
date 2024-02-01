@@ -66,7 +66,7 @@ test: ## Run tests
 
 .PHONY: test-e2e
 test-e2e: ## Run e2e tests
-	bats e2e
+	export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib && bats e2e
 
 .PHONY: lint
 lint: lint-go lint-docker lint-yaml
@@ -132,12 +132,12 @@ bin/goreleaser:
 	@rm -rf tmpgoreleaser
 
 bin/bats:
-	@mkdir -p bin/bats
+	@mkdir -p bin/bats-core
 	@mkdir -p tmpbats
 	git clone https://github.com/bats-core/bats-core.git tmpbats
-	bash tmpbats/install.sh bin/bats
-	@ln -sF bin/bats/bin/bats bin/bats
+	bash tmpbats/install.sh bin/bats-core
+	@ln -sF ${PWD}/bin/bats-core/bin/bats ${PWD}/bin
 	@rm -rf tmpbats
-	git clone https://github.com/bats-core/bats-support.git bin/bats/libexec/bats-core/lib/bats-support
-	git clone https://github.com/bats-core/bats-assert.git bin/bats/libexec/bats-core/lib/bats-assert
-	@export BATS_LIB_PATH=${PWD}/bin/bats/libexec/bats-core/lib
+	git clone https://github.com/bats-core/bats-support.git bin/bats-core/libexec/bats-core/lib/bats-support
+	git clone https://github.com/bats-core/bats-assert.git bin/bats-core/libexec/bats-core/lib/bats-assert
+	export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib
