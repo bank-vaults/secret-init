@@ -62,10 +62,6 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return secrets, nil
 }
 
-func (p *Provider) GetProviderName() string {
-	return ProviderName
-}
-
 func (p *Provider) getSecretFromFile(path string) (string, error) {
 	path = strings.TrimLeft(path, "/")
 	content, err := fs.ReadFile(p.fs, path)
