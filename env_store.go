@@ -15,14 +15,22 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/bank-vaults/secret-init/provider"
 	"github.com/bank-vaults/secret-init/provider/file"
 	"github.com/bank-vaults/secret-init/provider/vault"
 )
+
+var supportedProviders = []string{
+	file.ProviderName,
+	vault.ProviderName,
+}
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
 // including tasks like extracting and converting provider-specific paths and secrets.
@@ -44,41 +52,103 @@ func NewEnvStore() *EnvStore {
 	}
 }
 
-func (s *EnvStore) GetProviderPaths(provider provider.Provider) ([]string, error) {
-	var secretPaths []string
+// GetProviderPaths returns a map of secret paths for each provider
+func (s *EnvStore) GetProviderPaths() map[string][]string {
+	providerPaths := make(map[string][]string)
 
 	for envKey, path := range s.data {
-		p, path := getProviderPath(path)
+		providerName, path := getProviderPath(path)
+		switch providerName {
+		case file.ProviderName:
+			providerPaths[file.ProviderName] = append(providerPaths[file.ProviderName], path)
 
-		// TODO(csatib02): Implement multi-provider support
-		if p == provider.GetProviderName() {
+		case vault.ProviderName:
+
 			// The injector function expects a map of key:value pairs
-			if p == vault.ProviderName {
-				path = envKey + "=" + path
-			}
-
-			secretPaths = append(secretPaths, path)
+			path = envKey + "=" + path
+			providerPaths[vault.ProviderName] = append(providerPaths[vault.ProviderName], path)
 		}
 	}
 
-	return secretPaths, nil
+	return providerPaths
+}
+
+// LoadProviderSecrets creates a new provider for each detected provider using a specified config.
+// It then asynchronously loads secrets using each provider and it's corresponding paths.
+// The secrets from each provider are then placed into a map with the provider name as the key.
+func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
+	// At most, we will have one error per provider
+	errCh := make(chan error, len(supportedProviders))
+	providerSecrets := make(map[string][]provider.Secret)
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for providerName, paths := range providerPaths {
+		wg.Add(1)
+
+		go func(providerName string, paths []string, errCh chan<- error) {
+			defer wg.Done()
+
+			provider, err := newProvider(providerName)
+			if err != nil {
+				errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
+				return
+			}
+
+			secrets, err := provider.LoadSecrets(context.Background(), paths)
+			if err != nil {
+				errCh <- fmt.Errorf("failed to load secrets for provider %s: %w", providerName, err)
+				return
+			}
+
+			mu.Lock()
+			providerSecrets[providerName] = secrets
+			mu.Unlock()
+		}(providerName, paths, errCh)
+	}
+
+	// Wait for all providers to finish
+	wg.Wait()
+	close(errCh)
+
+	// Check for errors
+	var errs error
+	for e := range errCh {
+		if e != nil {
+			errs = errors.Join(errs, e)
+		}
+	}
+	if errs != nil {
+		return nil, errs
+	}
+
+	return providerSecrets, nil
 }
 
 // ConvertProviderSecrets converts the loaded secrets to environment variables
-// In case of the Vault provider, the secrets are already in the correct format
-func (s *EnvStore) ConvertProviderSecrets(provider provider.Provider, secrets []provider.Secret) ([]string, error) {
-	switch provider.GetProviderName() {
-	case vault.ProviderName:
-		// The Vault provider already returns the secrets with the environment variable keys
-		var vaultEnv []string
-		for _, secret := range secrets {
-			vaultEnv = append(vaultEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
-		}
-		return vaultEnv, nil
+func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.Secret) ([]string, error) {
+	var secretsEnv []string
 
-	default:
-		return createSecretEnvsFrom(s.data, secrets)
+	for providerName, secrets := range providerSecrets {
+		switch providerName {
+		case vault.ProviderName:
+			// The Vault provider already returns the secrets with the environment variable keys
+			for _, secret := range secrets {
+				secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
+			}
+
+		default:
+			secrets, err := createSecretEnvsFrom(s.data, secrets)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create secret environment variables: %w", err)
+			}
+
+			secretsEnv = append(secretsEnv, secrets...)
+		}
 	}
+
+	return secretsEnv, nil
 }
 
 // Returns the detected provider name and path with removed prefix
@@ -96,14 +166,41 @@ func getProviderPath(path string) (string, string) {
 	return "", path
 }
 
+func newProvider(providerName string) (provider.Provider, error) {
+	switch providerName {
+	case file.ProviderName:
+		config := file.LoadConfig()
+		provider, err := file.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create file provider: %w", err)
+		}
+		return provider, nil
+
+	case vault.ProviderName:
+		config, err := vault.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault config: %w", err)
+		}
+
+		provider, err := vault.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vault provider: %w", err)
+		}
+		return provider, nil
+
+	default:
+		return nil, fmt.Errorf("provider %s is not supported", providerName)
+	}
+}
+
 func createSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]string, error) {
 	// Reverse the map so we can match
 	// the environment variable key to the secret
 	// by using the secret path
 	reversedEnvs := make(map[string]string)
 	for envKey, path := range envs {
-		p, path := getProviderPath(path)
-		if p != "" {
+		providerName, path := getProviderPath(path)
+		if providerName != "" {
 			reversedEnvs[path] = envKey
 		}
 	}
