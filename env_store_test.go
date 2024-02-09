@@ -31,7 +31,17 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 	tests := []struct {
 		name      string
 		wantPaths map[string][]string
+		addvault  bool
 	}{
+		{
+			name: "single provider",
+			wantPaths: map[string][]string{
+				"file": {
+					secretFile,
+				},
+			},
+			addvault: false,
+		},
 		{
 			name: "multi provider",
 			wantPaths: map[string][]string{
@@ -43,13 +53,14 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 					secretFile,
 				},
 			},
+			addvault: true,
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(true, secretFile)
+			createEnvsForProvider(ttp.addvault, secretFile)
 			envStore := NewEnvStore()
 			paths := envStore.GetProviderPaths()
 
@@ -70,6 +81,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 		name                string
 		providerPaths       map[string][]string
 		wantProviderSecrets map[string][]provider.Secret
+		addvault            bool
 		err                 error
 	}{
 		{
@@ -87,6 +99,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 					},
 				},
 			},
+			addvault: false,
 		},
 		{
 			name: "Fail to create provider",
@@ -95,7 +108,8 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 					secretFile,
 				},
 			},
-			err: fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
+			addvault: false,
+			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
 		},
 		{
 			name: "Fail to load secrets due to invalid path",
@@ -111,10 +125,10 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(false, secretFile)
+			createEnvsForProvider(ttp.addvault, secretFile)
 			envStore := NewEnvStore()
 
-			providerSecrets, err := envStore.GetProviderSecrets(ttp.providerPaths)
+			providerSecrets, err := envStore.LoadProviderSecrets(ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
@@ -133,6 +147,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		name            string
 		providerSecrets map[string][]provider.Secret
 		wantSecretsEnv  []string
+		addvault        bool
 		err             error
 	}{
 		{
@@ -148,6 +163,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 			wantSecretsEnv: []string{
 				"AWS_SECRET_ACCESS_KEY_ID=secretId",
 			},
+			addvault: false,
 		},
 		{
 			name: "Fail to convert secrets due to fail to find env-key",
@@ -159,14 +175,15 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 					},
 				},
 			},
-			err: fmt.Errorf("failed to create secret environment variables: failed to find environment variable key for secret path: " + secretFile + "/invalid"),
+			addvault: false,
+			err:      fmt.Errorf("failed to create secret environment variables: failed to find environment variable key for secret path: " + secretFile + "/invalid"),
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(false, secretFile)
+			createEnvsForProvider(ttp.addvault, secretFile)
 			envStore := NewEnvStore()
 
 			secretsEnv, err := envStore.ConvertProviderSecrets(ttp.providerSecrets)

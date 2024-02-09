@@ -60,18 +60,9 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 		providerName, path := getProviderPath(path)
 		switch providerName {
 		case file.ProviderName:
-			_, ok := providerPaths[file.ProviderName]
-			if !ok {
-				providerPaths[file.ProviderName] = []string{}
-			}
-
 			providerPaths[file.ProviderName] = append(providerPaths[file.ProviderName], path)
 
 		case vault.ProviderName:
-			_, ok := providerPaths[vault.ProviderName]
-			if !ok {
-				providerPaths[vault.ProviderName] = []string{}
-			}
 
 			// The injector function expects a map of key:value pairs
 			path = envKey + "=" + path
@@ -85,15 +76,15 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 // GetProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a map with the provider name as the key.
-func (s *EnvStore) GetProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
 	providerSecrets := make(map[string][]provider.Secret)
 
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
 	for providerName, paths := range providerPaths {
-		providerSecrets[providerName] = []provider.Secret{}
 		wg.Add(1)
 
 		go func(providerName string, paths []string, errCh chan<- error) {
@@ -136,7 +127,6 @@ func (s *EnvStore) GetProviderSecrets(providerPaths map[string][]string) (map[st
 }
 
 // ConvertProviderSecrets converts the loaded secrets to environment variables
-// In case of the Vault provider, the secrets are already in the correct format
 func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.Secret) ([]string, error) {
 	var secretsEnv []string
 
