@@ -73,7 +73,7 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 	return providerPaths
 }
 
-// GetProviderSecrets creates a new provider for each detected provider using a specified config.
+// LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a map with the provider name as the key.
 func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {

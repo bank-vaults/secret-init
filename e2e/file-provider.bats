@@ -20,7 +20,6 @@ add_secret_file() {
 }
 
 teardown() {
-  rm -f "$TMPFILE"
   rm -f "$TMPFILE_SECRET"
   rm -f secret-init
 }
