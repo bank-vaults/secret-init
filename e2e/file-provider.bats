@@ -31,7 +31,7 @@ assert_output_contains() {
   echo "$output" | grep -qF "$expected" || fail "Expected line not found: $expected"
 }
 
-@test "secret successfully loaded" {
+@test "secret successfully loaded from file" {
   setup_file_provider
 
   run_output=$(./secret-init env | grep FILE_SECRET)
