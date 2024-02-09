@@ -30,37 +30,7 @@ import (
 	slogsyslog "github.com/samber/slog-syslog"
 
 	"github.com/bank-vaults/secret-init/common"
-	"github.com/bank-vaults/secret-init/provider"
-	"github.com/bank-vaults/secret-init/provider/file"
-	"github.com/bank-vaults/secret-init/provider/vault"
 )
-
-func NewProvider(providerName string) (provider.Provider, error) {
-	switch providerName {
-	case file.ProviderName:
-		config := file.LoadConfig()
-		provider, err := file.NewProvider(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create file provider: %w", err)
-		}
-		return provider, nil
-
-	case vault.ProviderName:
-		config, err := vault.LoadConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create vault config: %w", err)
-		}
-
-		provider, err := vault.NewProvider(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create vault provider: %w", err)
-		}
-		return provider, nil
-
-	default:
-		return nil, fmt.Errorf("provider %s not supported", providerName)
-	}
-}
 
 func main() {
 	// Load application config
@@ -79,29 +49,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create requested provider and extract relevant secret data
-	// TODO(csatib02): Implement multi-provider support
-	provider, err := NewProvider(config.Provider)
-	if err != nil {
-		slog.Error(fmt.Errorf("failed to create provider: %w", err).Error())
-		os.Exit(1)
-	}
-
+	// Fetch all provider secrets and assemble env variables using envstore
 	envStore := NewEnvStore()
 
-	providerPaths, err := envStore.GetProviderPaths(provider)
+	providerPaths := envStore.GetProviderPaths()
+
+	providerSecrets, err := envStore.LoadProviderSecrets(providerPaths)
 	if err != nil {
-		slog.Error(fmt.Errorf("failed to extract paths: %w", err).Error())
+		slog.Error(fmt.Errorf("failed to extract secrets: %w", err).Error())
 		os.Exit(1)
 	}
 
-	providerSecrets, err := provider.LoadSecrets(context.Background(), providerPaths)
-	if err != nil {
-		slog.Error(fmt.Errorf("failed to load secrets: %w", err).Error())
-		os.Exit(1)
-	}
-
-	secretsEnv, err := envStore.ConvertProviderSecrets(provider, providerSecrets)
+	secretsEnv, err := envStore.ConvertProviderSecrets(providerSecrets)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to convert secrets to envs: %w", err).Error())
 		os.Exit(1)

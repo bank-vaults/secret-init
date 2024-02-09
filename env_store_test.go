@@ -22,142 +22,200 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bank-vaults/secret-init/provider"
-	"github.com/bank-vaults/secret-init/provider/file"
-	"github.com/bank-vaults/secret-init/provider/vault"
 )
 
-func TestEnvStore_GetPathsFor(t *testing.T) {
+func TestEnvStore_GetProviderPaths(t *testing.T) {
+	secretFile := newSecretFile(t, "secretId")
+	defer os.Remove(secretFile)
+
 	tests := []struct {
 		name      string
-		provider  provider.Provider
-		wantPaths []string
-		err       error
+		wantPaths map[string][]string
+		addvault  bool
 	}{
 		{
-			name:     "Vault provider",
-			provider: &vault.Provider{},
-			wantPaths: []string{
-				"MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD",
-				"AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
+			name: "single provider",
+			wantPaths: map[string][]string{
+				"file": {
+					secretFile,
+				},
 			},
+			addvault: false,
 		},
 		{
-			name:     "File provider",
-			provider: &file.Provider{},
-			wantPaths: []string{
-				"test/secrets/mysql.txt",
-				"test/secrets/aws.txt",
+			name: "multi provider",
+			wantPaths: map[string][]string{
+				"vault": {
+					"MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD",
+					"AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
+				},
+				"file": {
+					secretFile,
+				},
 			},
+			addvault: true,
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(ttp.provider)
-
+			createEnvsForProvider(ttp.addvault, secretFile)
 			envStore := NewEnvStore()
+			paths := envStore.GetProviderPaths()
 
-			paths, err := envStore.GetProviderPaths(ttp.provider)
-			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
-			}
-
-			if ttp.wantPaths != nil {
-				assert.Contains(t, paths, ttp.wantPaths[0], "Unexpected path")
-				assert.Contains(t, paths, ttp.wantPaths[1], "Unexpected path")
+			for key, expectedSlice := range ttp.wantPaths {
+				actualSlice, ok := paths[key]
+				assert.True(t, ok, "Key not found in actual paths")
+				assert.ElementsMatch(t, expectedSlice, actualSlice, "Slices for key %s do not match", key)
 			}
 		})
 	}
 }
 
 func TestEnvStore_GetProviderSecrets(t *testing.T) {
+	secretFile := newSecretFile(t, "secretId")
+	defer os.Remove(secretFile)
+
 	tests := []struct {
-		name        string
-		provider    provider.Provider
-		secrets     []provider.Secret
-		wantSecrets []string
-		err         error
+		name                string
+		providerPaths       map[string][]string
+		wantProviderSecrets map[string][]provider.Secret
+		addvault            bool
+		err                 error
 	}{
 		{
-			name:     "Vault provider",
-			provider: &vault.Provider{},
-			secrets: []provider.Secret{
-				{
-					Path:  "MYSQL_PASSWORD",
-					Value: "3xtr3ms3cr3t",
-				},
-				{
-					Path:  "AWS_SECRET_ACCESS_KEY",
-					Value: "s3cr3t",
+			name: "Load secrets successfully",
+			providerPaths: map[string][]string{
+				"file": {
+					secretFile,
 				},
 			},
-			wantSecrets: []string{
-				"MYSQL_PASSWORD=3xtr3ms3cr3t",
-				"AWS_SECRET_ACCESS_KEY=s3cr3t",
+			wantProviderSecrets: map[string][]provider.Secret{
+				"file": {
+					{
+						Path:  secretFile,
+						Value: "secretId",
+					},
+				},
 			},
+			addvault: false,
 		},
 		{
-			name:     "File provider",
-			provider: &file.Provider{},
-			secrets: []provider.Secret{
-				{
-					Path:  "test/secrets/mysql.txt",
-					Value: "3xtr3ms3cr3t",
-				},
-				{
-					Path:  "test/secrets/aws.txt",
-					Value: "s3cr3t",
+			name: "Fail to create provider",
+			providerPaths: map[string][]string{
+				"invalid": {
+					secretFile,
 				},
 			},
-			wantSecrets: []string{
-				"MYSQL_PASSWORD=3xtr3ms3cr3t",
-				"AWS_SECRET_ACCESS_KEY=s3cr3t",
-			},
+			addvault: false,
+			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
 		},
 		{
-			name:     "File provider - missing environment variable",
-			provider: &file.Provider{},
-			secrets: []provider.Secret{
-				{
-					Path:  "test/secrets/mysql.txt",
-					Value: "3xtr3ms3cr3t",
-				},
-				{
-					Path:  "test/secrets/aws/invalid",
-					Value: "s3cr3t",
+			name: "Fail to load secrets due to invalid path",
+			providerPaths: map[string][]string{
+				"file": {
+					secretFile + "/invalid",
 				},
 			},
-			err: fmt.Errorf("failed to find environment variable key for secret path: test/secrets/aws/invalid"),
+			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open " + secretFile + "/invalid: not a directory"),
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(ttp.provider)
-
+			createEnvsForProvider(ttp.addvault, secretFile)
 			envStore := NewEnvStore()
 
-			secretsEnv, err := envStore.ConvertProviderSecrets(ttp.provider, ttp.secrets)
+			providerSecrets, err := envStore.LoadProviderSecrets(ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
-
-			if ttp.wantSecrets != nil {
-				assert.Equal(t, ttp.wantSecrets, secretsEnv, "Unexpected secrets")
+			if ttp.wantProviderSecrets != nil {
+				assert.Equal(t, ttp.wantProviderSecrets, providerSecrets, "Unexpected secrets")
 			}
 		})
 	}
 }
 
-func createEnvsForProvider(provider provider.Provider) {
-	switch provider.GetProviderName() {
-	case vault.ProviderName:
+func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
+	secretFile := newSecretFile(t, "secretId")
+	defer os.Remove(secretFile)
+
+	tests := []struct {
+		name            string
+		providerSecrets map[string][]provider.Secret
+		wantSecretsEnv  []string
+		addvault        bool
+		err             error
+	}{
+		{
+			name: "Convert secrets successfully",
+			providerSecrets: map[string][]provider.Secret{
+				"file": {
+					{
+						Path:  secretFile,
+						Value: "secretId",
+					},
+				},
+			},
+			wantSecretsEnv: []string{
+				"AWS_SECRET_ACCESS_KEY_ID=secretId",
+			},
+			addvault: false,
+		},
+		{
+			name: "Fail to convert secrets due to fail to find env-key",
+			providerSecrets: map[string][]provider.Secret{
+				"file": {
+					{
+						Path:  secretFile + "/invalid",
+						Value: "secretId",
+					},
+				},
+			},
+			addvault: false,
+			err:      fmt.Errorf("failed to create secret environment variables: failed to find environment variable key for secret path: " + secretFile + "/invalid"),
+		},
+	}
+
+	for _, tt := range tests {
+		ttp := tt
+		t.Run(ttp.name, func(t *testing.T) {
+			createEnvsForProvider(ttp.addvault, secretFile)
+			envStore := NewEnvStore()
+
+			secretsEnv, err := envStore.ConvertProviderSecrets(ttp.providerSecrets)
+			if err != nil {
+				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
+			}
+			if ttp.wantSecretsEnv != nil {
+				assert.Equal(t, ttp.wantSecretsEnv, secretsEnv, "Unexpected secrets")
+			}
+		})
+	}
+}
+
+func createEnvsForProvider(addVault bool, secretFile string) {
+	os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
+	if addVault {
 		os.Setenv("MYSQL_PASSWORD", "vault:secret/data/test/mysql#MYSQL_PASSWORD")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY")
-	case file.ProviderName:
-		os.Setenv("MYSQL_PASSWORD", "file:test/secrets/mysql.txt")
-		os.Setenv("AWS_SECRET_ACCESS_KEY", "file:test/secrets/aws.txt")
 	}
+}
+
+func newSecretFile(t *testing.T, content string) string {
+	dir := t.TempDir() + "/test/secrets"
+	err := os.MkdirAll(dir, 0755)
+	assert.Nil(t, err, "Failed to create directory")
+
+	file, err := os.CreateTemp(dir, "secret.txt")
+	assert.Nil(t, err, "Failed to create a temporary file")
+	defer file.Close()
+
+	_, err = file.WriteString(content)
+	assert.Nil(t, err, "Failed to write to the temporary file")
+
+	return file.Name()
 }
