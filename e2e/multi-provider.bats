@@ -63,22 +63,24 @@ add_secrets_to_vault() {
   docker exec "$vault_container_name" vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
 }
 
-remove_secrets_from_vault() {
-  docker exec "$vault_container_name" vault kv delete secret/test/mysql
-  docker exec "$vault_container_name" vault kv delete secret/test/aws
+add_custom_secret_to_vault() {
+  local path="$1"
+  shift
+  local data=()
+
+  for secret in "$@"; do
+    data+=("$secret")
+  done
+
+  vault kv put "$path" "${data[@]}"
 }
 
 teardown() {
-  stop_vault
+  docker compose down
 
   rm -f "$TMPFILE_SECRET"
   rm -f "$TMPFILE_TOKEN"
   rm -f secret-init
-}
-
-stop_vault() {
-  remove_secrets_from_vault
-  docker compose down
 }
 
 assert_output_contains() {
