@@ -28,9 +28,9 @@ setup_vault_provider() {
   export VAULT_ADDR="http://127.0.0.1:8200"
   export VAULT_TOKEN_FILE="$TMPFILE_TOKEN"
 
-  export MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD
-  export AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY
-  export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
+  export MYSQL_PASSWORD="vault:secret/data/test/mysql#MYSQL_PASSWORD"
+  export AWS_SECRET_ACCESS_KEY="vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY"
+  export AWS_ACCESS_KEY_ID="vault:secret/data/test/aws#AWS_ACCESS_KEY_ID"
 
   start_vault
 }

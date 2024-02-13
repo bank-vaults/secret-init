@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -157,7 +159,11 @@ func getProviderPath(path string) (string, string) {
 		var fileProviderName = file.ProviderName
 		return fileProviderName, strings.TrimPrefix(path, "file:")
 	}
-	if strings.HasPrefix(path, "vault:") {
+	// If the path contains the "vault:" substring it is most probably a vault path
+	// otherwise the injector will not process it
+	re := regexp.MustCompile(`(vault:\w+)(\/\w+)`)
+	if re.MatchString(path) {
+		slog.Info("Detected vault path", "path", path)
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
 		return vaultProviderName, path
