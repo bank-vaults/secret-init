@@ -27,7 +27,6 @@ const (
 	LogServerEnv = "SECRET_INIT_LOG_SERVER"
 	DaemonEnv    = "SECRET_INIT_DAEMON"
 	DelayEnv     = "SECRET_INIT_DELAY"
-	ProviderEnv  = "SECRET_INIT_PROVIDER"
 )
 
 type Config struct {
