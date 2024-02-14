@@ -163,7 +163,6 @@ func getProviderPath(path string) (string, string) {
 	// otherwise the injector will not process it
 	re := regexp.MustCompile(`(vault:\w+)(\/\w+)`)
 	if re.MatchString(path) {
-		slog.Info("Detected vault path", "path", path)
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
 		return vaultProviderName, path
