@@ -33,7 +33,6 @@ Run the test suite:
 
 ```shell
 make test
-make test-e2e
 ```
 
 Run linters:

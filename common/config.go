@@ -36,6 +36,7 @@ type Config struct {
 	LogServer string        `json:"log_server"`
 	Daemon    bool          `json:"daemon"`
 	Delay     time.Duration `json:"delay"`
+	Provider  string        `json:"provider"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -45,5 +46,6 @@ func LoadConfig() (*Config, error) {
 		LogServer: os.Getenv(LogServerEnv),
 		Daemon:    cast.ToBool(os.Getenv(DaemonEnv)),
 		Delay:     cast.ToDuration(os.Getenv(DelayEnv)),
+		Provider:  os.Getenv(ProviderEnv),
 	}, nil
 }

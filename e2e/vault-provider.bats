@@ -4,22 +4,12 @@ setup() {
   bats_load_library bats-support
   bats_load_library bats-assert
 
+  start_vault
+
+  setup_pod
+
   run go build
   assert_success
-}
-
-setup_vault_provider() {
-  TMPFILE_TOKEN=$(mktemp)
-  printf "227e1cce-6bf7-30bb-2d2a-acc854318caf" > "$TMPFILE_TOKEN"
-
-  export VAULT_ADDR="http://127.0.0.1:8200"
-  export VAULT_TOKEN_FILE="$TMPFILE_TOKEN"
-
-  export MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD
-  export AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY
-  export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
-
-  start_vault
 }
 
 start_vault() {
@@ -36,6 +26,19 @@ start_vault() {
   done
 }
 
+setup_pod() {
+  TMPFILE=$(mktemp)
+  printf "227e1cce-6bf7-30bb-2d2a-acc854318caf" > "$TMPFILE"
+
+  export SECRET_INIT_PROVIDER="vault"
+  export VAULT_ADDR="http://127.0.0.1:8200"
+  export VAULT_TOKEN_FILE="$TMPFILE"
+
+  export MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD
+  export AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY
+  export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
+}
+
 set_vault_token() {
   local token=$1
   export VAULT_TOKEN="$token"
@@ -50,21 +53,21 @@ add_secrets_to_vault() {
   docker exec "$vault_container_name" vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
 }
 
-remove_secrets_from_vault() {
-  docker exec "$vault_container_name" vault kv delete secret/test/mysql
-  docker exec "$vault_container_name" vault kv delete secret/test/aws
-}
-
 teardown() {
   stop_vault
 
-  rm -f "$TMPFILE_TOKEN"
+  rm -f "$TMPFILE"
   rm -f secret-init
 }
 
 stop_vault() {
   remove_secrets_from_vault
   docker compose down
+}
+
+remove_secrets_from_vault() {
+  docker exec "$vault_container_name" vault kv delete secret/test/mysql
+  docker exec "$vault_container_name" vault kv delete secret/test/aws
 }
 
 assert_output_contains() {
@@ -86,7 +89,6 @@ check_process_status() {
 
 
 @test "secrets successfully loaded from vault" {
-  setup_vault_provider
   set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_vault
 
@@ -99,7 +101,6 @@ check_process_status() {
 }
 
 @test "secrets successfully loaded from vault using vault:login as token" {
-  setup_vault_provider
   set_vault_token "vault:login"
   add_secrets_to_vault
 
@@ -112,7 +113,6 @@ check_process_status() {
 }
 
 @test "secrets successfully loaded from vault using vault:login as token and daemon mode enabled" {
-  setup_vault_provider
   set_vault_token "vault:login"
   set_daemon_mode
   add_secrets_to_vault
@@ -135,7 +135,6 @@ check_process_status() {
   unset AWS_SECRET_ACCESS_KEY
   unset AWS_ACCESS_KEY_ID
 
-  setup_vault_provider
   set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_vault
   export VAULT_FROM_PATH="secret/data/test/mysql,secret/data/test/aws"

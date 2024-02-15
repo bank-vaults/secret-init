@@ -157,6 +157,10 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return sanitized.secrets, nil
 }
 
+func (p *Provider) GetProviderName() string {
+	return ProviderName
+}
+
 func parsePathsToMap(paths []string) map[string]string {
 	vaultEnviron := make(map[string]string)
 

@@ -47,11 +47,15 @@ func TestConfig(t *testing.T) {
 			for envKey, envVal := range ttp.env {
 				os.Setenv(envKey, envVal)
 			}
-			defer os.Clearenv()
 
 			config := LoadConfig()
 
 			assert.Equal(t, ttp.wantMountPath, config.MountPath, "Unexpected mount path")
+
+			// unset envs for the next test
+			for envKey := range ttp.env {
+				os.Unsetenv(envKey)
+			}
 		})
 	}
 }

@@ -2,40 +2,30 @@ setup() {
   bats_load_library bats-support
   bats_load_library bats-assert
 
+  setup_pod
+
   run go build
   assert_success
 }
 
-setup_file_provider() {
-  add_secret_file
+setup_pod() {
+  TMPFILE=$(mktemp)
+  printf "secret-value" > "$TMPFILE"
 
+  export SECRET_INIT_PROVIDER="file"
   export FILE_MOUNT_PATH="/"
-
-  export FILE_SECRET="file:$TMPFILE_SECRET"
-}
-
-add_secret_file() {
-  TMPFILE_SECRET=$(mktemp)
-  printf "secret-value" > "$TMPFILE_SECRET"
+  export Secret="file:$TMPFILE"
 }
 
 teardown() {
-  rm -f "$TMPFILE_SECRET"
+  rm -f "$TMPFILE"
   rm -f secret-init
 }
 
-assert_output_contains() {
-  local expected=$1
-  local output=$2
-
-  echo "$output" | grep -qF "$expected" || fail "Expected line not found: $expected"
-}
-
-@test "secret successfully loaded from file" {
-  setup_file_provider
-
-  run_output=$(./secret-init env | grep FILE_SECRET)
+@test "secret successfully loaded" {
+  run_output=$(./secret-init env | grep Secret)
   assert_success
+  expected_output="Secret=secret-value"
 
-  assert_output_contains "FILE_SECRET=secret-value" "$run_output"
+  assert_equal "$run_output" "$expected_output"
 }
