@@ -158,9 +158,9 @@ func getProviderPath(path string) (string, string) {
 		var fileProviderName = file.ProviderName
 		return fileProviderName, strings.TrimPrefix(path, "file:")
 	}
-	// If the path contains the "vault:" substring it is most probably a vault path
-	// otherwise the injector will not process it
-	re := regexp.MustCompile(`(vault:\w+)(\/\w+)`)
+	// If the path contains some string formatted as "vault:{STR}#{STR}"
+	// it is most probably a vault path
+	re := regexp.MustCompile(`(vault:)(.*)#(.*)`)
 	if re.MatchString(path) {
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
