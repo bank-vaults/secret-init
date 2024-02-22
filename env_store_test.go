@@ -91,7 +91,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 				os.Setenv(envKey, envVal)
 			}
 			t.Cleanup(func() {
-				defer os.Clearenv()
+				os.Clearenv()
 			})
 
 			paths := NewEnvStore().GetProviderPaths()
