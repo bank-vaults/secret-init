@@ -25,44 +25,76 @@ import (
 )
 
 func TestEnvStore_GetProviderPaths(t *testing.T) {
-	secretFile := newSecretFile(t, "secretId")
-	defer os.Remove(secretFile)
-
 	tests := []struct {
 		name      string
+		envs      map[string]string
 		wantPaths map[string][]string
-		addvault  bool
 	}{
 		{
-			name: "single provider",
+			name: "file provider",
+			envs: map[string]string{
+				"AWS_SECRET_ACCESS_KEY_ID": "file:secret/data/test/aws",
+			},
 			wantPaths: map[string][]string{
 				"file": {
-					secretFile,
+					"secret/data/test/aws",
 				},
 			},
-			addvault: false,
+		},
+		{
+			name: "vault provider",
+			envs: map[string]string{
+				"ACCOUNT_PASSWORD_1":              "vault:secret/data/account#password#1",
+				"ACCOUNT_PASSWORD":                "vault:secret/data/account#password",
+				"ROOT_CERT":                       ">>vault:pki/root/generate/internal#certificate",
+				"ROOT_CERT_CACHED":                ">>vault:pki/root/generate/internal#certificate",
+				"INLINE_SECRET":                   "scheme://${vault:secret/data/account#username}:${vault:secret/data/account#password}@127.0.0.1:8080",
+				"INLINE_SECRET_EMBEDDED_TEMPLATE": "scheme://${vault:secret/data/account#username}:${vault:secret/data/account#${.password | urlquery}}@127.0.0.1:8080",
+				"INLINE_DYNAMIC_SECRET":           "${>>vault:pki/root/generate/internal#certificate}__${>>vault:pki/root/generate/internal#certificate}",
+			},
+			wantPaths: map[string][]string{
+				"vault": {
+					"ACCOUNT_PASSWORD_1=vault:secret/data/account#password#1",
+					"ACCOUNT_PASSWORD=vault:secret/data/account#password",
+					"ROOT_CERT=>>vault:pki/root/generate/internal#certificate",
+					"ROOT_CERT_CACHED=>>vault:pki/root/generate/internal#certificate",
+					"INLINE_SECRET=scheme://${vault:secret/data/account#username}:${vault:secret/data/account#password}@127.0.0.1:8080",
+					"INLINE_SECRET_EMBEDDED_TEMPLATE=scheme://${vault:secret/data/account#username}:${vault:secret/data/account#${.password | urlquery}}@127.0.0.1:8080",
+					"INLINE_DYNAMIC_SECRET=${>>vault:pki/root/generate/internal#certificate}__${>>vault:pki/root/generate/internal#certificate}",
+				},
+			},
 		},
 		{
 			name: "multi provider",
+			envs: map[string]string{
+				"AWS_SECRET_ACCESS_KEY_ID": "file:secret/data/test/aws",
+				"MYSQL_PASSWORD":           "vault:secret/data/test/mysql#MYSQL_PASSWORD",
+				"AWS_SECRET_ACCESS_KEY":    "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
+			},
 			wantPaths: map[string][]string{
 				"vault": {
 					"MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD",
 					"AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
 				},
 				"file": {
-					secretFile,
+					"secret/data/test/aws",
 				},
 			},
-			addvault: true,
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(ttp.addvault, secretFile)
-			envStore := NewEnvStore()
-			paths := envStore.GetProviderPaths()
+			// prepare envs
+			for envKey, envVal := range ttp.envs {
+				os.Setenv(envKey, envVal)
+			}
+			t.Cleanup(func() {
+				defer os.Clearenv()
+			})
+
+			paths := NewEnvStore().GetProviderPaths()
 
 			for key, expectedSlice := range ttp.wantPaths {
 				actualSlice, ok := paths[key]
@@ -126,9 +158,8 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
-			envStore := NewEnvStore()
 
-			providerSecrets, err := envStore.LoadProviderSecrets(ttp.providerPaths)
+			providerSecrets, err := NewEnvStore().LoadProviderSecrets(ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
@@ -184,9 +215,8 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
-			envStore := NewEnvStore()
 
-			secretsEnv, err := envStore.ConvertProviderSecrets(ttp.providerSecrets)
+			secretsEnv, err := NewEnvStore().ConvertProviderSecrets(ttp.providerSecrets)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

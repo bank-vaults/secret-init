@@ -47,7 +47,9 @@ func TestConfig(t *testing.T) {
 			for envKey, envVal := range ttp.env {
 				os.Setenv(envKey, envVal)
 			}
-			defer os.Clearenv()
+			t.Cleanup(func() {
+				defer os.Clearenv()
+			})
 
 			config := LoadConfig()
 
