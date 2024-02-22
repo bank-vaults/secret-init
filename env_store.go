@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -157,7 +158,10 @@ func getProviderPath(path string) (string, string) {
 		var fileProviderName = file.ProviderName
 		return fileProviderName, strings.TrimPrefix(path, "file:")
 	}
-	if strings.HasPrefix(path, "vault:") {
+	// If the path contains some string formatted as "vault:{STR}#{STR}"
+	// it is most probably a vault path
+	re := regexp.MustCompile(`(vault:)(.*)#(.*)`)
+	if re.MatchString(path) {
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
 		return vaultProviderName, path
