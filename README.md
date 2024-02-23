@@ -5,23 +5,9 @@
 
 **Minimalistic init system for containers injecting secrets from various secret stores.**
 
-## Features
+## Usage
 
-
-- **Multi-provider support** - Automatically deduces and initializes required secret providers from environment variable references.
-- **Async loading** - Secrets are loaded asynchronously to improve speed.
-- **Renew secrets** - Use daemon mode to renew secrets in the background.
-
-| **Supported Providers**                                      | **Status**     |
-|--------------------------------------------------------------|----------------|
-|  File proivder                                               | ✅ Implemented  |
-| [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
-| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| Upcoming       |
-
-## Getting started
-
-- `secret-init` is designed for use with the [Kubernetes mutating webhook](https://bank-vaults.dev/docs/mutating-webhook/). It can also function as a standalone tool.
-- Take a look at some of the [examples](examples) that showcase the use of `secret-init`.
+TODO
 
 ## Development
 
