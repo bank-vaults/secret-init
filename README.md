@@ -8,19 +8,19 @@
 ## Features
 
 
-- `Multi-provider support`: No need to explicitly specify the secret provider; instead, secrets are loaded based on environment variable references.
-- `Async loading`: Secrets are loaded asynchronously, enhancing speed and efficiency.
-- `Load without modification`: `Secret-init` replaces environment variable values, with values from secret providers, without modification.
-- `Renew secrets`: If `secret-init` is used in daemon mode, it will renew secrets in the background.
+- **Multi-provider support** - Automatically deduces and initializes required secret providers from environment variable references.
+- **Async loading** - Secrets are loaded asynchronously to improve speed.
+- **Renew secrets** - Use daemon mode to renew secrets in the background.
 
 | **Supported Providers**                                      | **Status**     |
 |--------------------------------------------------------------|----------------|
-| [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented |
+|  File proivder                                               | ✅ Implemented  |
+| [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
 | [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| Upcoming       |
 
 ## Getting started
 
-- `Secret-init` is designed for use with the [Kubernetes mutating webhook](https://bank-vaults.dev/docs/mutating-webhook/); however, it can also function as a standalone tool.
+- `secret-init` is designed for use with the [Kubernetes mutating webhook](https://bank-vaults.dev/docs/mutating-webhook/). It can also function as a standalone tool.
 - Take a look at some of the [examples](examples) that showcase the use of `secret-init`.
 
 ## Development
