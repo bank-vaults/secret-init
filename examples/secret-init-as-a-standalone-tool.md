@@ -19,31 +19,29 @@ make up
 mkdir -p example
 ```
 
-- Prepare File provider
+### Prepare File provider
 ```bash
+# Create secrets for the file provider
+printf "secret-value" >> "example/secret-file"
+printf "super-secret-value" >> "example/super-secret-value"
+
 #NOTE: Optionally you can set a mount path for the file provider by using the FILE_MOUNT_PATH environment variable.
 ```
 
-- Prepare Vault provider
+### Prepare Vault provider
 ```bash
 # Create a tokenfile
 printf $VAULT_TOKEN > "example/token-file"
 export VAULT_TOKEN_FILE=$PWD/example/token-file
 
-#NOTE: Secret-init can authenticate to Vault by supplying role/path credentials. 
-```
-
-## Define secrets to inject
-```bash
-# Create secrets for the file provider
-printf "secret-value" >> "example/secret-file"
-printf "super-secret-value" >> "example/super-secret-value"
+#NOTE: Secret-init can authenticate to Vault by supplying role/path credentials.
 
 # Create secrets for the vault provider
 vault kv put secret/test/mysql MYSQL_PASSWORD=3xtr3ms3cr3t
 vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
 ```
 
+## Define secrets to inject
 ```bash
 # Export environment variables
 export FILE_SECRET_1=file:$PWD/example/secret-file
@@ -61,7 +59,6 @@ go build
 
 # Use in daemon mode
 SECRET_INIT_DAEMON="true"
-
 
 # Run secret-init with a command e.g.
 ./secret-init env | grep 'MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|FILE_SECRET_1\|FILE_SECRET_2'
