@@ -20,6 +20,7 @@ mkdir -p example
 ```
 
 ### Prepare File provider
+
 ```bash
 # Create secrets for the file provider
 printf "secret-value" >> "example/secret-file"
@@ -29,6 +30,7 @@ printf "super-secret-value" >> "example/super-secret-value"
 ```
 
 ### Prepare Vault provider
+
 ```bash
 # Create a tokenfile
 printf $VAULT_TOKEN > "example/token-file"
@@ -42,6 +44,7 @@ vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3
 ```
 
 ## Define secrets to inject
+
 ```bash
 # Export environment variables
 export FILE_SECRET_1=file:$PWD/example/secret-file
