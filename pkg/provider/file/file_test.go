@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
 func TestNewProvider(t *testing.T) {

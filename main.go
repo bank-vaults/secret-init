@@ -29,7 +29,7 @@ import (
 	slogmulti "github.com/samber/slog-multi"
 	slogsyslog "github.com/samber/slog-syslog"
 
-	"github.com/bank-vaults/secret-init/common"
+	"github.com/bank-vaults/secret-init/pkg/common"
 )
 
 func main() {
@@ -66,8 +66,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Delay if needed
-	// NOTE(ramizpolic): any specific reason why this is here?
 	if config.Delay > 0 {
 		slog.Info(fmt.Sprintf("sleeping for %s...", config.Delay))
 		time.Sleep(config.Delay)

@@ -14,7 +14,7 @@
 
 | **Supported Providers**                                      | **Status**     |
 |--------------------------------------------------------------|----------------|
-|  File proivder                                               | ✅ Implemented  |
+|  Local provider                                              | ✅ Implemented  |
 | [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
 | [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| Upcoming       |
 

@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
 const ProviderName = "file"
