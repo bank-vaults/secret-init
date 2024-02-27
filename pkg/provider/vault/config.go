@@ -56,6 +56,7 @@ const (
 	TransitBatchSizeEnv     = "VAULT_TRANSIT_BATCH_SIZE"
 	IgnoreMissingSecretsEnv = "VAULT_IGNORE_MISSING_SECRETS"
 	PassthroughEnv          = "VAULT_PASSTHROUGH"
+	LogLevelEnv             = "VAULT_LOG_LEVEL"
 	RevokeTokenEnv          = "VAULT_REVOKE_TOKEN"
 	FromPathEnv             = "VAULT_FROM_PATH"
 )
@@ -107,6 +108,7 @@ var sanitizeEnvmap = map[string]envType{
 	TransitBatchSizeEnv:     {login: false},
 	IgnoreMissingSecretsEnv: {login: false},
 	PassthroughEnv:          {login: false},
+	LogLevelEnv:             {login: false},
 	RevokeTokenEnv:          {login: false},
 	FromPathEnv:             {login: false},
 }
