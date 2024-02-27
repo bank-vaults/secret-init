@@ -164,13 +164,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		IsLogin:    isLogin,
-		Token:      vaultToken,
-		TokenFile:  tokenFile,
-		Role:       role,
-		AuthPath:   authPath,
-		AuthMethod: authMethod,
-		// injector configuration
+		IsLogin:          isLogin,
+		Token:            vaultToken,
+		TokenFile:        tokenFile,
+		Role:             role,
+		AuthPath:         authPath,
+		AuthMethod:       authMethod,
 		TransitKeyID:     os.Getenv(TransitKeyIDEnv),
 		TransitPath:      os.Getenv(TransitPathEnv),
 		TransitBatchSize: cast.ToInt(os.Getenv(TransitBatchSizeEnv)),

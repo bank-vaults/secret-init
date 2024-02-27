@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/bank-vaults/secret-init/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
 func TestEnvStore_GetProviderPaths(t *testing.T) {

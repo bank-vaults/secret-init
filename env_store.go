@@ -23,9 +23,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bank-vaults/secret-init/provider"
-	"github.com/bank-vaults/secret-init/provider/file"
-	"github.com/bank-vaults/secret-init/provider/vault"
+	"github.com/bank-vaults/secret-init/pkg/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider/file"
+	"github.com/bank-vaults/secret-init/pkg/provider/vault"
 )
 
 var supportedProviders = []string{
