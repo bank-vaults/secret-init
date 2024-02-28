@@ -56,6 +56,7 @@ const (
 	TransitBatchSizeEnv     = "VAULT_TRANSIT_BATCH_SIZE"
 	IgnoreMissingSecretsEnv = "VAULT_IGNORE_MISSING_SECRETS"
 	PassthroughEnv          = "VAULT_PASSTHROUGH"
+	LogLevelEnv             = "VAULT_LOG_LEVEL"
 	RevokeTokenEnv          = "VAULT_REVOKE_TOKEN"
 	FromPathEnv             = "VAULT_FROM_PATH"
 )
@@ -107,6 +108,7 @@ var sanitizeEnvmap = map[string]envType{
 	TransitBatchSizeEnv:     {login: false},
 	IgnoreMissingSecretsEnv: {login: false},
 	PassthroughEnv:          {login: false},
+	LogLevelEnv:             {login: false},
 	RevokeTokenEnv:          {login: false},
 	FromPathEnv:             {login: false},
 }
@@ -164,17 +166,16 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		IsLogin:          isLogin,
-		Token:            vaultToken,
-		TokenFile:        tokenFile,
-		Role:             role,
-		AuthPath:         authPath,
-		AuthMethod:       authMethod,
-		TransitKeyID:     os.Getenv(TransitKeyIDEnv),
-		TransitPath:      os.Getenv(TransitPathEnv),
-		TransitBatchSize: cast.ToInt(os.Getenv(TransitBatchSizeEnv)),
-		// Used both for reading secrets and transit encryption
-		IgnoreMissingSecrets: cast.ToBool(os.Getenv(IgnoreMissingSecretsEnv)),
+		IsLogin:              isLogin,
+		Token:                vaultToken,
+		TokenFile:            tokenFile,
+		Role:                 role,
+		AuthPath:             authPath,
+		AuthMethod:           authMethod,
+		TransitKeyID:         os.Getenv(TransitKeyIDEnv),
+		TransitPath:          os.Getenv(TransitPathEnv),
+		TransitBatchSize:     cast.ToInt(os.Getenv(TransitBatchSizeEnv)),
+		IgnoreMissingSecrets: cast.ToBool(os.Getenv(IgnoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
 		FromPath:             os.Getenv(FromPathEnv),
 		RevokeToken:          cast.ToBool(os.Getenv(RevokeTokenEnv)),
 	}, nil
