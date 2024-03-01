@@ -184,7 +184,7 @@ func initLogger(config *common.Config) {
 
 	// TODO: add level filter handler
 	logger := slog.New(router.Handler())
-	logger = logger.With(slog.String("app", "vault-secret-init"))
+	logger = logger.With(slog.String("app", "secret-init"))
 
 	// Set the default logger to the configured logger,
 	// enabling direct usage of the slog package for logging.

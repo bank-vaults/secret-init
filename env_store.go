@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/bank-vaults/secret-init/pkg/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider/bao"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
 	"github.com/bank-vaults/secret-init/pkg/provider/vault"
 )
@@ -31,6 +32,7 @@ import (
 var supportedProviders = []string{
 	file.ProviderName,
 	vault.ProviderName,
+	bao.ProviderName,
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -64,10 +66,14 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 			providerPaths[file.ProviderName] = append(providerPaths[file.ProviderName], path)
 
 		case vault.ProviderName:
-
 			// The injector function expects a map of key:value pairs
 			path = envKey + "=" + path
 			providerPaths[vault.ProviderName] = append(providerPaths[vault.ProviderName], path)
+
+		case bao.ProviderName:
+			// The injector function expects a map of key:value pairs
+			path = envKey + "=" + path
+			providerPaths[bao.ProviderName] = append(providerPaths[bao.ProviderName], path)
 		}
 	}
 
@@ -133,8 +139,8 @@ func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.
 
 	for providerName, secrets := range providerSecrets {
 		switch providerName {
-		case vault.ProviderName:
-			// The Vault provider already returns the secrets with the environment variable keys
+		case vault.ProviderName, bao.ProviderName:
+			// The Vault and Bao providers already returns the secrets with the environment variable keys
 			for _, secret := range secrets {
 				secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
 			}
@@ -158,13 +164,23 @@ func getProviderPath(path string) (string, string) {
 		var fileProviderName = file.ProviderName
 		return fileProviderName, strings.TrimPrefix(path, "file:")
 	}
+
 	// If the path contains some string formatted as "vault:{STR}#{STR}"
 	// it is most probably a vault path
-	re := regexp.MustCompile(`(vault:)(.*)#(.*)`)
-	if re.MatchString(path) {
+	vaultRe := regexp.MustCompile(vault.Re)
+	if vaultRe.MatchString(path) {
 		var vaultProviderName = vault.ProviderName
 		// Do not remove the prefix since it will be processed during injection
 		return vaultProviderName, path
+	}
+
+	// If the path contains some string formatted as "bao:{STR}#{STR}"
+	// it is most probably a vault path
+	baoRe := regexp.MustCompile(bao.Re)
+	if baoRe.MatchString(path) {
+		var baoProviderName = bao.ProviderName
+		// Do not remove the prefix since it will be processed during injection
+		return baoProviderName, path
 	}
 
 	return "", path
@@ -189,6 +205,18 @@ func newProvider(providerName string) (provider.Provider, error) {
 		provider, err := vault.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
+		}
+		return provider, nil
+
+	case bao.ProviderName:
+		config, err := bao.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create bao config: %w", err)
+		}
+
+		provider, err := bao.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create bao provider: %w", err)
 		}
 		return provider, nil
 
