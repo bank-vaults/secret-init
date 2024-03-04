@@ -7,7 +7,6 @@
 
 ## Features
 
-
 - **Multi-provider support** - Automatically deduces and initializes required secret providers from environment variable references.
 - **Async loading** - Secrets are loaded asynchronously to improve speed.
 - **Renew secrets** - Use daemon mode to renew secrets in the background.
@@ -16,6 +15,7 @@
 |--------------------------------------------------------------|----------------|
 |  Local provider                                              | ✅ Implemented  |
 | [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
+| [OpenBao](https://github.com/openbao/openbao)                | ✅ Implemented  |
 | [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| Upcoming       |
 
 ## Getting started
