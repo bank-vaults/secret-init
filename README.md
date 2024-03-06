@@ -16,7 +16,8 @@
 |--------------------------------------------------------------|----------------|
 |  Local provider                                              | ✅ Implemented  |
 | [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
-| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| Upcoming       |
+| [OpenBao](https://github.com/openbao/openbao)                | ✅ Implemented  |
+| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| ✅ Implemented  |
 
 ## Getting started
 

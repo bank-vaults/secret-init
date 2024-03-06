@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/bank-vaults/secret-init/pkg/provider"
+	"github.com/bank-vaults/secret-init/pkg/provider/aws"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
 	"github.com/bank-vaults/secret-init/pkg/provider/vault"
 )
@@ -31,6 +32,7 @@ import (
 var supportedProviders = []string{
 	file.ProviderName,
 	vault.ProviderName,
+	aws.ProviderName,
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -57,8 +59,8 @@ func NewEnvStore() *EnvStore {
 func (s *EnvStore) GetProviderPaths() map[string][]string {
 	providerPaths := make(map[string][]string)
 
-	for envKey, path := range s.data {
-		providerName, path := getProviderPath(path)
+	for envKey, envPath := range s.data {
+		providerName, path := getProviderPath(envPath)
 		switch providerName {
 		case file.ProviderName:
 			providerPaths[file.ProviderName] = append(providerPaths[file.ProviderName], path)
@@ -68,6 +70,9 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 			// The injector function expects a map of key:value pairs
 			path = envKey + "=" + path
 			providerPaths[vault.ProviderName] = append(providerPaths[vault.ProviderName], path)
+		case aws.ProviderName:
+			// The injector function expects a map of key:value pairs
+			providerPaths[aws.ProviderName] = append(providerPaths[aws.ProviderName], path)
 		}
 	}
 
@@ -133,8 +138,8 @@ func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.
 
 	for providerName, secrets := range providerSecrets {
 		switch providerName {
-		case vault.ProviderName:
-			// The Vault provider already returns the secrets with the environment variable keys
+		case vault.ProviderName, aws.ProviderName:
+			// The Vault and AWS providers already returns the secrets with the environment variable keys
 			for _, secret := range secrets {
 				secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
 			}
@@ -167,6 +172,16 @@ func getProviderPath(path string) (string, string) {
 		return vaultProviderName, path
 	}
 
+	// Example AWS prefixes:
+	// arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret
+	// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
+	// arn:aws:kms:us-west-2:123456789012:key/my-key
+	if strings.HasPrefix(path, "arn:") {
+		var awsProviderName = aws.ProviderName
+		// Do not remove the prefix since it will be processed during injection
+		return awsProviderName, path
+	}
+
 	return "", path
 }
 
@@ -190,6 +205,15 @@ func newProvider(providerName string) (provider.Provider, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
+		return provider, nil
+
+	case aws.ProviderName:
+		config, err := aws.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create aws config: %w", err)
+		}
+
+		provider := aws.NewProvider(config)
 		return provider, nil
 
 	default:
