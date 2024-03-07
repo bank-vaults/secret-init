@@ -17,12 +17,14 @@ package aws
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 
 	"emperror.dev/errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/ssm"
+
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
@@ -44,15 +46,22 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	var secrets []provider.Secret
 
 	for _, path := range paths {
+		split := strings.SplitN(path, "=", 2)
+		originalKey, secretID := split[0], split[1]
 		// valid secretsmanager secret examples:
 		// arn:aws:secretsmanager:region:account-id:secret:secret-name
 		// secretsmanager:secret-name
-		if strings.Contains(path, "secretsmanager:") {
-			secret, err := p.sm.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &path})
+		if strings.Contains(secretID, "secretsmanager:") {
+			secret, err := p.sm.GetSecretValue(
+				&secretsmanager.GetSecretValueInput{
+					SecretId: &secretID,
+				})
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get secret from AWS secrets manager")
 			}
 
+			// If the secret is a JSON object, then unmarshal it
+			// and append each key-value pair as a secret
 			if json.Valid([]byte(*secret.SecretString)) {
 				var secretValues map[string]interface{}
 				err := json.Unmarshal([]byte(*secret.SecretString), &secretValues)
@@ -65,47 +74,41 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 					if err != nil {
 						return nil, errors.Wrap(err, "failed to append secret")
 					}
+
 					secrets = append(secrets, secretToAppend)
 				}
 
+				os.Unsetenv(originalKey)
 				// Only add the secrets present in the JSON
 				continue
 			}
 
-			secretToAppend, err := appendSecret(path, *secret.SecretString)
+			secretToAppend, err := appendSecret(originalKey, *secret.SecretString)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to append secret")
 			}
+
 			secrets = append(secrets, secretToAppend)
 		}
 
 		// Valid ssm parameter examples:
 		// arn:aws:ssm:region:account-id:parameter/path/to/parameter-name
 		// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
-		if strings.Contains(path, "ssm:") {
-			var parameteredSecretPath string
-			tokens := strings.Split(path, ":")
-			switch len(tokens) {
-			case 6:
-				parameteredSecretPath = strings.Join(tokens[5:], ":")
-			case 7:
-				parameteredSecretPath = strings.Join(tokens[6:], ":")
-			default:
-				return nil, errors.New("invalid SSM parameter path")
-			}
-
-			parameteredSecret, err := p.ssm.GetParameter(&ssm.GetParameterInput{
-				Name:           aws.String(parameteredSecretPath),
-				WithDecryption: aws.Bool(true),
-			})
+		if strings.Contains(secretID, "ssm:") {
+			parameteredSecret, err := p.ssm.GetParameter(
+				&ssm.GetParameterInput{
+					Name:           aws.String(secretID),
+					WithDecryption: aws.Bool(true),
+				})
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get parameter from AWS SSM")
 			}
 
-			secretToAppend, err := appendSecret(parameteredSecretPath, *parameteredSecret.Parameter.Value)
+			secretToAppend, err := appendSecret(originalKey, *parameteredSecret.Parameter.Value)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to append secret")
 			}
+
 			secrets = append(secrets, secretToAppend)
 		}
 	}
@@ -113,16 +116,16 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	return secrets, nil
 }
 
-func appendSecret(path string, value interface{}) (provider.Secret, error) {
+func appendSecret(key string, value interface{}) (provider.Secret, error) {
 	switch v := value.(type) {
 	case string:
 		return provider.Secret{
-			Path:  path,
+			Key:   key,
 			Value: v,
 		}, nil
 	case []byte:
 		return provider.Secret{
-			Path:  path,
+			Key:   key,
 			Value: string(v),
 		}, nil
 	default:

@@ -91,22 +91,22 @@ func TestLoadSecrets(t *testing.T) {
 		{
 			name: "Load secrets successfully",
 			paths: []string{
-				"test/secrets/sqlpass.txt",
-				"test/secrets/awsaccess.txt",
-				"test/secrets/awsid.txt",
+				"MYSQL_PASSWORD=file:test/secrets/sqlpass.txt",
+				"AWS_SECRET_ACCESS_KEY=file:test/secrets/awsaccess.txt",
+				"AWS_ACCESS_KEY_ID=file:test/secrets/awsid.txt",
 			},
 			wantSecrets: []provider.Secret{
-				{Path: "test/secrets/sqlpass.txt", Value: "3xtr3ms3cr3t"},
-				{Path: "test/secrets/awsaccess.txt", Value: "s3cr3t"},
-				{Path: "test/secrets/awsid.txt", Value: "secretId"},
+				{Key: "MYSQL_PASSWORD", Value: "3xtr3ms3cr3t"},
+				{Key: "AWS_SECRET_ACCESS_KEY", Value: "s3cr3t"},
+				{Key: "AWS_ACCESS_KEY_ID", Value: "secretId"},
 			},
 		},
 		{
 			name: "Fail to load secrets due to invalid path",
 			paths: []string{
-				"test/secrets/mistake/sqlpass.txt",
-				"test/secrets/mistake/awsaccess.txt",
-				"test/secrets/mistake/awsid.txt",
+				"MYSQL_PASSWORD=file:test/secrets/mistake/sqlpass.txt",
+				"AWS_SECRET_ACCESS_KEY=file:test/secrets/mistake/awsaccess.txt",
+				"AWS_ACCESS_KEY_ID=file:test/secrets/mistake/awsid.txt",
 			},
 			err: fmt.Errorf("failed to get secret from file: failed to read file: open test/secrets/mistake/sqlpass.txt: file does not exist"),
 		},

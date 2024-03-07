@@ -55,28 +55,26 @@ func NewEnvStore() *EnvStore {
 	}
 }
 
-// GetProviderPaths returns a map of secret paths for each provider
-func (s *EnvStore) GetProviderPaths() map[string][]string {
-	providerPaths := make(map[string][]string)
+// GetSecretReferences returns a map of secret key=value pairs for each provider
+func (s *EnvStore) GetSecretReferences() map[string][]string {
+	secretReferences := make(map[string][]string)
 
 	for envKey, envPath := range s.data {
-		providerName, path := getProviderPath(envPath)
+		providerName, envSecretReference := getProviderPath(envPath)
+		envSecretReference = envKey + "=" + envSecretReference
 		switch providerName {
 		case file.ProviderName:
-			providerPaths[file.ProviderName] = append(providerPaths[file.ProviderName], path)
+			secretReferences[file.ProviderName] = append(secretReferences[file.ProviderName], envSecretReference)
 
 		case vault.ProviderName:
+			secretReferences[vault.ProviderName] = append(secretReferences[vault.ProviderName], envSecretReference)
 
-			// The injector function expects a map of key:value pairs
-			path = envKey + "=" + path
-			providerPaths[vault.ProviderName] = append(providerPaths[vault.ProviderName], path)
 		case aws.ProviderName:
-			// The injector function expects a map of key:value pairs
-			providerPaths[aws.ProviderName] = append(providerPaths[aws.ProviderName], path)
+			secretReferences[aws.ProviderName] = append(secretReferences[aws.ProviderName], envSecretReference)
 		}
 	}
 
-	return providerPaths
+	return secretReferences
 }
 
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
@@ -136,21 +134,9 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.Secret) ([]string, error) {
 	var secretsEnv []string
 
-	for providerName, secrets := range providerSecrets {
-		switch providerName {
-		case vault.ProviderName, aws.ProviderName:
-			// The Vault and AWS providers already returns the secrets with the environment variable keys
-			for _, secret := range secrets {
-				secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Path, secret.Value))
-			}
-
-		default:
-			secrets, err := createSecretEnvsFrom(s.data, secrets)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create secret environment variables: %w", err)
-			}
-
-			secretsEnv = append(secretsEnv, secrets...)
+	for _, secrets := range providerSecrets {
+		for _, secret := range secrets {
+			secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 		}
 	}
 
@@ -161,24 +147,21 @@ func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.
 func getProviderPath(path string) (string, string) {
 	if strings.HasPrefix(path, "file:") {
 		var fileProviderName = file.ProviderName
-		return fileProviderName, strings.TrimPrefix(path, "file:")
+		return fileProviderName, path
 	}
 	// If the path contains some string formatted as "vault:{STR}#{STR}"
 	// it is most probably a vault path
 	re := regexp.MustCompile(`(vault:)(.*)#(.*)`)
 	if re.MatchString(path) {
 		var vaultProviderName = vault.ProviderName
-		// Do not remove the prefix since it will be processed during injection
 		return vaultProviderName, path
 	}
 
 	// Example AWS prefixes:
 	// arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret
 	// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
-	// arn:aws:kms:us-west-2:123456789012:key/my-key
 	if strings.HasPrefix(path, "arn:") {
 		var awsProviderName = aws.ProviderName
-		// Do not remove the prefix since it will be processed during injection
 		return awsProviderName, path
 	}
 
@@ -219,30 +202,4 @@ func newProvider(providerName string) (provider.Provider, error) {
 	default:
 		return nil, fmt.Errorf("provider %s is not supported", providerName)
 	}
-}
-
-func createSecretEnvsFrom(envs map[string]string, secrets []provider.Secret) ([]string, error) {
-	// Reverse the map so we can match
-	// the environment variable key to the secret
-	// by using the secret path
-	reversedEnvs := make(map[string]string)
-	for envKey, path := range envs {
-		providerName, path := getProviderPath(path)
-		if providerName != "" {
-			reversedEnvs[path] = envKey
-		}
-	}
-
-	var secretsEnv []string
-	for _, secret := range secrets {
-		path := secret.Path
-		key, ok := reversedEnvs[path]
-		if !ok {
-			return nil, fmt.Errorf("failed to find environment variable key for secret path: %s", path)
-		}
-
-		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", key, secret.Value))
-	}
-
-	return secretsEnv, nil
 }

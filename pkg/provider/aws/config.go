@@ -34,24 +34,32 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigDisable,
-	}))
-
 	region, err := getRegion()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get region")
 	}
 
+	// SharedConfigDisable is the default state,
+	// and will use the AWS_SDK_LOAD_CONFIG environment variable.
 	// LoadFromSharedConfigEnv can be used to enable loading from AWS shared config.
+	var sess *session.Session
 	loadFromSharedConfig := cast.ToBool(os.Getenv(LoadFromSharedConfigEnv))
 	if loadFromSharedConfig {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			Config: aws.Config{
-				Region: region,
-			},
-			SharedConfigState: session.SharedConfigEnable,
-		}))
+		sess = session.Must(session.NewSessionWithOptions(
+			session.Options{
+				Config: aws.Config{
+					Region: region,
+				},
+				SharedConfigState: session.SharedConfigEnable,
+			}))
+	} else {
+		sess = session.Must(session.NewSessionWithOptions(
+			session.Options{
+				Config: aws.Config{
+					Region: region,
+				},
+				SharedConfigState: session.SharedConfigDisable,
+			}))
 	}
 
 	return &Config{session: sess}, nil
@@ -63,9 +71,9 @@ func getRegion() (*string, error) {
 		defaultRegion, hasDefaultRegion := os.LookupEnv(DefaultRegionEnv)
 		if hasDefaultRegion {
 			return &defaultRegion, nil
-		} else {
-			return nil, errors.New("no region found")
 		}
+
+		return nil, errors.New("no region found")
 	}
 
 	return &region, nil

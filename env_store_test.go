@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 			},
 			wantPaths: map[string][]string{
 				"file": {
-					"secret/data/test/aws",
+					"AWS_SECRET_ACCESS_KEY_ID=file:secret/data/test/aws",
 				},
 			},
 		},
@@ -65,19 +66,36 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 			},
 		},
 		{
+			name: "aws provider",
+			envs: map[string]string{
+				"AWS_SECRET1": "arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+				"AWS_SECRET2": "arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+			},
+			wantPaths: map[string][]string{
+				"aws": {
+					"AWS_SECRET1=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+					"AWS_SECRET2=arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+				},
+			},
+		},
+		{
 			name: "multi provider",
 			envs: map[string]string{
 				"AWS_SECRET_ACCESS_KEY_ID": "file:secret/data/test/aws",
 				"MYSQL_PASSWORD":           "vault:secret/data/test/mysql#MYSQL_PASSWORD",
 				"AWS_SECRET_ACCESS_KEY":    "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
+				"AWS_SECRET1":              "arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
 			},
 			wantPaths: map[string][]string{
+				"file": {
+					"AWS_SECRET_ACCESS_KEY_ID=file:secret/data/test/aws",
+				},
 				"vault": {
 					"MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD",
 					"AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
 				},
-				"file": {
-					"secret/data/test/aws",
+				"aws": {
+					"AWS_SECRET1=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
 				},
 			},
 		},
@@ -94,7 +112,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 				os.Clearenv()
 			})
 
-			paths := NewEnvStore().GetProviderPaths()
+			paths := NewEnvStore().GetSecretReferences()
 
 			for key, expectedSlice := range ttp.wantPaths {
 				actualSlice, ok := paths[key]
@@ -120,13 +138,13 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			name: "Load secrets successfully",
 			providerPaths: map[string][]string{
 				"file": {
-					secretFile,
+					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
 			wantProviderSecrets: map[string][]provider.Secret{
 				"file": {
 					{
-						Path:  secretFile,
+						Key:   "AWS_SECRET_ACCESS_KEY_ID",
 						Value: "secretId",
 					},
 				},
@@ -137,7 +155,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			name: "Fail to create provider",
 			providerPaths: map[string][]string{
 				"invalid": {
-					secretFile,
+					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
 			addvault: false,
@@ -147,10 +165,10 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			name: "Fail to load secrets due to invalid path",
 			providerPaths: map[string][]string{
 				"file": {
-					secretFile + "/invalid",
+					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile + "/invalid",
 				},
 			},
-			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open " + secretFile + "/invalid: not a directory"),
+			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open " + strings.TrimLeft(secretFile, "/") + "/invalid: not a directory"),
 		},
 	}
 
@@ -186,7 +204,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 			providerSecrets: map[string][]provider.Secret{
 				"file": {
 					{
-						Path:  secretFile,
+						Key:   "AWS_SECRET_ACCESS_KEY_ID",
 						Value: "secretId",
 					},
 				},
@@ -195,19 +213,6 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 				"AWS_SECRET_ACCESS_KEY_ID=secretId",
 			},
 			addvault: false,
-		},
-		{
-			name: "Fail to convert secrets due to fail to find env-key",
-			providerSecrets: map[string][]provider.Secret{
-				"file": {
-					{
-						Path:  secretFile + "/invalid",
-						Value: "secretId",
-					},
-				},
-			},
-			addvault: false,
-			err:      fmt.Errorf("failed to create secret environment variables: failed to find environment variable key for secret path: " + secretFile + "/invalid"),
 		},
 	}
 
