@@ -59,7 +59,7 @@ add_custom_secret_to_bao() {
     data+=("$secret")
   done
 
-  bao kv put "$path" "${data[@]}"
+  docker exec "$bao_container_name" bao kv put "$path" "${data[@]}"
 }
 
 teardown() {
@@ -161,7 +161,7 @@ check_process_status() {
 
   # Inline secrets with scheme
   add_custom_secret_to_bao "secret/test/scheme" "SCHEME_SECRET1=sch3m3s3cr3tONE" "SCHEME_SECRET2=sch3m3s3cr3tTWO"
-  export SCHEME_SECRET="scheme://\${bao:secret/data/test/scheme#SCHEME_SECRET1}:\${bao:secret/data/test/scheme#SCHEME_SECRET2}@$BAO_ADDR"
+  export SCHEME_SECRET_BAO="scheme://\${bao:secret/data/test/scheme#SCHEME_SECRET1}:\${bao:secret/data/test/scheme#SCHEME_SECRET2}@$BAO_ADDR"
 
   # Enable pki secrets engine and generate root certificates
   docker exec "$bao_container_name" bao secrets enable -path=pki pki

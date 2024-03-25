@@ -59,7 +59,7 @@ add_custom_secret_to_vault() {
     data+=("$secret")
   done
 
-  vault kv put "$path" "${data[@]}"
+  docker exec "$vault_container_name" vault kv put "$path" "${data[@]}"
 }
 
 teardown() {
@@ -164,7 +164,7 @@ check_process_status() {
   export SCHEME_SECRET="scheme://\${vault:secret/data/test/scheme#SCHEME_SECRET1}:\${vault:secret/data/test/scheme#SCHEME_SECRET2}@$VAULT_ADDR"
 
   # Enable pki secrets engine and generate root certificates
-  vault secrets enable -path=pki pki
+  docker exec "$vault_container_name" vault secrets enable -path=pki pki
   export ROOT_CERT=">>vault:pki/root/generate/internal#certificate"
   export ROOT_CERT_CACHED=">>vault:pki/root/generate/internal#certificate"
 

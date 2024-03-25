@@ -69,7 +69,7 @@ func TestNewProvider(t *testing.T) {
 		{
 			name:   "Fail to create bao client due to timeout",
 			config: &Config{},
-			err:    fmt.Errorf("failed to create bao client: timeout [10s] during waiting for Bao token"),
+			err:    fmt.Errorf("failed to create bao client: timeout [10s] during waiting for Vault token"),
 		},
 	}
 

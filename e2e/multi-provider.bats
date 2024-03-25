@@ -70,7 +70,7 @@ add_custom_secret_to_vault() {
     data+=("$secret")
   done
 
-  vault kv put "$path" "${data[@]}"
+  docker exec "$vault_container_name" vault kv put "$path" "${data[@]}"
 }
 
 setup_bao_provider() {
@@ -104,7 +104,7 @@ add_custom_secret_to_bao() {
     data+=("$secret")
   done
 
-  bao kv put "$path" "${data[@]}"
+  docker exec "$bao_container_name" bao kv put "$path" "${data[@]}"
 }
 
 set_daemon_mode() {
@@ -145,7 +145,7 @@ check_process_status() {
   add_secrets_to_vault
 
   setup_bao_provider
-  set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
+  set_bao_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_bao
 
   run_output=$(./secret-init env | grep 'FILE_SECRET\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD')
@@ -168,7 +168,7 @@ check_process_status() {
   add_secrets_to_vault
 
   setup_bao_provider
-  set_vault_token "bao:login"
+  set_bao_token "bao:login"
   add_secrets_to_bao
 
   run_output=$(./secret-init env | grep 'FILE_SECRET\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD')
@@ -193,7 +193,7 @@ check_process_status() {
   add_secrets_to_vault
 
   setup_bao_provider
-  set_vault_token "bao:login"
+  set_bao_token "bao:login"
   add_secrets_to_bao
 
   run_output=$(./secret-init env | grep 'FILE_SECRET\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD')
@@ -229,7 +229,7 @@ check_process_status() {
   export VAULT_FROM_PATH="secret/data/test/mysql,secret/data/test/aws"
 
   setup_bao_provider
-  set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
+  set_bao_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_bao
   export BAO_FROM_PATH="secret/data/test/api,secret/data/test/rabbitmq"
 
@@ -271,7 +271,7 @@ check_process_status() {
   export SCHEME_SECRET_BAO="scheme://\${bao:secret/data/test/scheme#SCHEME_SECRET1}:\${bao:secret/data/test/scheme#SCHEME_SECRET2}@$BAO_ADDR"
 
   # Enable pki secrets engine and generate root certificates
-  vault secrets enable -path=pki pki
+  docker exec "$vault_container_name" vault secrets enable -path=pki pki
   export ROOT_CERT_VAULT=">>vault:pki/root/generate/internal#certificate"
   export ROOT_CERT_CACHED_VAULT=">>vault:pki/root/generate/internal#certificate"
 

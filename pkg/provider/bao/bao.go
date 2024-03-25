@@ -22,10 +22,11 @@ import (
 	"os/signal"
 	"strings"
 
-	injector "github.com/bank-vaults/internal/bao_injector"
+	injector "github.com/bank-vaults/internal/pkg/baoinjector"
+	bao "github.com/bank-vaults/vault-sdk/vault"
+
 	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
-	bao "github.com/bank-vaults/vault-sdk/vault"
 )
 
 const (

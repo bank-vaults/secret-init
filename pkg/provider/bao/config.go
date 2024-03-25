@@ -1,4 +1,4 @@
-// Copyright © 2023 Bank-BAOs Maintainers
+// Copyright © 2023 Bank-Vaults Maintainers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,8 +118,9 @@ func LoadConfig() (*Config, error) {
 		role, authPath, authMethod      string
 		hasRole, hasPath, hasAuthMethod bool
 	)
-	// This workaround is necessary because the BAO_ADDR is not yet used directly
-	// by the Bao client
+	// This workaround is necessary because the BAO_ADDR
+	// is not yet used directly by the Bao client.
+	// This is why env_store.go/workaroundForBao() has been implemented.
 	baoAddr := os.Getenv(AddrEnv)
 	os.Setenv("VAULT_ADDR", baoAddr)
 

@@ -22,7 +22,7 @@ import (
 	"os/signal"
 	"strings"
 
-	injector "github.com/bank-vaults/internal/vault_injector"
+	injector "github.com/bank-vaults/internal/pkg/vaultinjector"
 	"github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"

@@ -88,6 +88,20 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 	errCh := make(chan error, len(supportedProviders))
 	providerSecrets := make(map[string][]provider.Secret)
 
+	// Workaround for openBao
+	// Remove once openBao uses BAO_ADDR in their client, instead of VAULT_ADDR
+	vaultPaths, ok := providerPaths[vault.ProviderName]
+	if ok {
+		var err error
+		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths)
+		if err != nil {
+			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
+		}
+
+		// Remove the vault paths since they have been processed
+		delete(providerPaths, vault.ProviderName)
+	}
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -131,6 +145,23 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 	}
 
 	return providerSecrets, nil
+}
+
+// Workaround for openBao
+func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, error) {
+	var secrets []provider.Secret
+
+	provider, err := newProvider(vault.ProviderName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider %s: %w", vault.ProviderName, err)
+	}
+
+	secrets, err = provider.LoadSecrets(context.Background(), vaultPaths)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load secrets for provider %s: %w", vault.ProviderName, err)
+	}
+
+	return secrets, nil
 }
 
 // ConvertProviderSecrets converts the loaded secrets to environment variables

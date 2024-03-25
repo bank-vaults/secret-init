@@ -16,9 +16,9 @@ services:
     container_name: bao
     image: openbao:dev
     ports:
-      - 127.0.0.1:8300:8300
+      - 127.0.0.1:8300:8200
     environment:
       SKIP_SETCAP: "true"
-      BAO_ADDR: http://127.0.0.1:8300
+      BAO_ADDR: http://127.0.0.1:8200
       BAO_TOKEN: 227e1cce-6bf7-30bb-2d2a-acc854318caf
       BAO_DEV_ROOT_TOKEN_ID: 227e1cce-6bf7-30bb-2d2a-acc854318caf
