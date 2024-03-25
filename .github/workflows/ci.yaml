@@ -240,7 +240,7 @@ jobs:
         ports:
           - 8200:8200
       bao:
-        image: csatib02/openbao:dev
+        image: csatib02/openbao:dev-arm64
         env:
           SKIP_SETCAP: "true"
           BAO_ADDR: http://127.0.0.1:8200
