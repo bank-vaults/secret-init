@@ -14,7 +14,7 @@ services:
 
   bao:
     container_name: bao
-    image: openbao:dev
+    image: csatib02/openbao:dev
     ports:
       - 127.0.0.1:8300:8200
     environment:
