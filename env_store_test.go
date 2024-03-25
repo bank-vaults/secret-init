@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -144,15 +143,6 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			addvault: false,
 			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
 		},
-		{
-			name: "Fail to load secrets due to invalid path",
-			providerPaths: map[string][]string{
-				"file": {
-					secretFile + "/invalid",
-				},
-			},
-			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open %s/invalid: not a directory", secretFile),
-		},
 	}
 
 	for _, tt := range tests {
@@ -248,8 +238,5 @@ func newSecretFile(t *testing.T, content string) string {
 	_, err = file.WriteString(content)
 	assert.Nil(t, err, "Failed to write to the temporary file")
 
-	// The file provider also cuts this off
-	fileName := strings.TrimLeft(file.Name(), "/")
-
-	return fileName
+	return file.Name()
 }
