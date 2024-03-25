@@ -2,8 +2,6 @@ module github.com/bank-vaults/secret-init
 
 go 1.21.1
 
-toolchain go1.22.1
-
 require (
 	emperror.dev/errors v0.8.1
 	github.com/bank-vaults/internal v0.3.0
