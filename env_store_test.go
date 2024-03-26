@@ -105,7 +105,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 	}
 }
 
-func TestEnvStore_GetProviderSecrets(t *testing.T) {
+func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	secretFile := newSecretFile(t, "secretId")
 	defer os.Remove(secretFile)
 

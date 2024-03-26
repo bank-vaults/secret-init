@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   vault:
-    container_name: vault
+    container_name: secret-init-vault
     image: hashicorp/vault:1.14.1
     ports:
       - 127.0.0.1:8200:8200
@@ -13,7 +13,7 @@ services:
       VAULT_DEV_ROOT_TOKEN_ID: 227e1cce-6bf7-30bb-2d2a-acc854318caf
 
   bao:
-    container_name: bao
+    container_name: secret-init-bao
     image: csatib02/openbao:dev
     ports:
       - 127.0.0.1:8300:8200

@@ -118,6 +118,7 @@ func LoadConfig() (*Config, error) {
 		role, authPath, authMethod      string
 		hasRole, hasPath, hasAuthMethod bool
 	)
+
 	// This workaround is necessary because the BAO_ADDR
 	// is not yet used directly by the Bao client.
 	// This is why env_store.go/workaroundForBao() has been implemented.

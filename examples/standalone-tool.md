@@ -1,5 +1,6 @@
-## Secret-init as a standalone tool
-**Multi-provider setup**
+# Secret-init as a standalone tool
+
+## Multi-provider setup
 
 ## Prerequisites
 
@@ -32,29 +33,33 @@ printf "super-secret-value" >> "example/super-secret-value"
 ### Prepare Vault provider
 
 ```bash
+export VAULT_ADDR=http://127.0.0.1:8200
 # Create a tokenfile
+export VAULT_TOKEN=227e1cce-6bf7-30bb-2d2a-acc854318caf
 printf $VAULT_TOKEN > "example/vault-token-file"
 export VAULT_TOKEN_FILE=$PWD/example/vault-token-file
 
 #NOTE: Secret-init can authenticate to Vault by supplying role/path credentials.
 
 # Create secrets for the vault provider
-vault kv put secret/test/mysql MYSQL_PASSWORD=3xtr3ms3cr3t
-vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
+docker exec secret-init-vault vault kv put secret/test/mysql MYSQL_PASSWORD=3xtr3ms3cr3t
+docker exec secret-init-vault vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
 ```
 
 ### Prepare Bao provider
 
 ```bash
+export BAO_ADDR=http://127.0.0.1:8300
 # Create a tokenfile
+export BAO_TOKEN=227e1cce-6bf7-30bb-2d2a-acc854318caf
 printf $BAO_TOKEN > "example/bao-token-file"
 export BAO_TOKEN_FILE=$PWD/example/bao-token-file
 
 #NOTE: Secret-init can authenticate to Bao by supplying role/path credentials.
 
 # Create secrets for the vault provider
-docker exec bao bao kv put secret/test/api API_KEY=sensitiveApiKey
-docker exec bao bao kv put secret/test/rabbitmq RABBITMQ_USERNAME=rabbitmqUser RABBITMQ_PASSWORD=rabbitmqPassword
+docker exec secret-init-bao bao kv put secret/test/api API_KEY=sensitiveApiKey
+docker exec secret-init-bao bao kv put secret/test/rabbitmq RABBITMQ_USERNAME=rabbitmqUser RABBITMQ_PASSWORD=rabbitmqPassword
 ```
 
 ## Define secrets to inject
@@ -78,7 +83,7 @@ export RABBITMQ_PASSWORD="bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD"
 go build
 
 # Use in daemon mode
-SECRET_INIT_DAEMON="true"
+export SECRET_INIT_DAEMON="true"
 
 # Run secret-init with a command e.g.
 ./secret-init env | grep 'FILE_SECRET_1\|FILE_SECRET_2\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD'
@@ -95,7 +100,11 @@ rm -rf secret-init
 make down
 
 # Unset the environment variables
+unset VAULT_ADDR
+unset VAULT_TOKEN
 unset VAULT_TOKEN_FILE
+unset BAO_ADDR
+unset BAO_TOKEN
 unset BAO_TOKEN_FILE
 unset SECRET_INIT_DAEMON
 unset FILE_SECRET_1

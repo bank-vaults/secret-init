@@ -147,7 +147,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 	return providerSecrets, nil
 }
 
-// Workaround for openBao
+// Workaround for openBao, essentially loading secretes from Vault first.
 func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 

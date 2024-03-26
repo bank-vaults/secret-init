@@ -1,5 +1,5 @@
-vault_container_name="vault"
-bao_container_name="bao"
+vault_container_name="secret-init-vault"
+bao_container_name="secret-init-bao"
 
 setup() {
   bats_load_library bats-support
@@ -16,10 +16,9 @@ start_containers() {
 
   # wait for Bao and Vault to be ready
   max_attempts=${MAX_ATTEMPTS:-10}
-
   for ((attempts = 0; attempts < max_attempts; attempts++)); do
-    if docker compose exec -T "$bao_container_name"  bao status > /dev/null 2>&1 && \
-       docker compose exec -T "$vault_container_name" vault status > /dev/null 2>&1; then
+    if docker compose exec -T "$vault_container_name"  bao status > /dev/null 2>&1 && \
+       docker compose exec -T "$bao_container_name" vault status > /dev/null 2>&1; then
       break
     fi
     sleep 1
@@ -30,7 +29,6 @@ setup_file_provider() {
   add_secret_file
 
   export FILE_MOUNT_PATH="/"
-
   export FILE_SECRET="file:$TMPFILE_SECRET"
 }
 
@@ -111,8 +109,67 @@ set_daemon_mode() {
   export SECRET_INIT_DAEMON="true"
 }
 
+setup_database_for_daemon_mode() {
+  docker network create my-network
+
+  # Start a PostgreSQL container so a renewable secret can be created
+  docker run --network=my-network --name my-postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=mydb -p 5432:5432 -d postgres
+
+  # wait for Postgre to be ready
+  max_attempts=${MAX_ATTEMPTS:-10}
+  for ((attempts = 0; attempts < max_attempts; attempts++)); do
+    if docker exec my-postgres pg_isready -U postgres -d mydb > /dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+
+  docker network connect my-network "$vault_container_name"
+  docker network connect my-network "$bao_container_name"
+
+  # Enable the database secrets engine
+  docker exec "$vault_container_name" vault secrets enable database
+  docker exec "$bao_container_name" bao secrets enable database
+
+  # Configure the database secrets engine
+  docker exec "$vault_container_name" vault write database/config/my-database \
+      plugin_name=postgresql-database-plugin \
+      allowed_roles="my-role-vault" \
+      connection_url="postgresql://postgres:mysecretpassword@my-postgres:5432/mydb?sslmode=disable" \
+      username="postgres" \
+      password="mysecretpassword"
+
+  docker exec "$bao_container_name" bao write database/config/my-database \
+      plugin_name=postgresql-database-plugin \
+      allowed_roles="my-role-bao" \
+      connection_url="postgresql://postgres:mysecretpassword@my-postgres:5432/mydb?sslmode=disable" \
+      username="postgres" \
+      password="mysecretpassword"
+
+  # Create a role with a short TTL
+  docker exec "$vault_container_name" vault write database/roles/my-role-vault \
+      db_name=my-database \
+      creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{name}}\";" \
+      default_ttl="10s" \
+      max_ttl="10s"
+
+  docker exec "$bao_container_name" bao write database/roles/my-role-bao \
+      db_name=my-database \
+      creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{name}}\";" \
+      default_ttl="10s" \
+      max_ttl="10s"
+
+  # Set the environment variables so they can be renewed
+  export DATABASE_USERNAME="vault:database/creds/my-role-vault#username"
+  export DATABASE_PASSWORD="vault:database/creds/my-role-vault#password"
+  export DATABASE_USERNAME="bao:database/creds/my-role-bao#username"
+  export DATABASE_PASSWORD="bao:database/creds/my-role-bao#password"
+}
+
 teardown() {
   docker compose down
+  docker rm -f my-postgres
+  docker network rm my-network
 
   rm -f "$TMPFILE_SECRET"
   rm -f "$TMPFILE_VAULT_TOKEN"
@@ -125,16 +182,6 @@ assert_output_contains() {
   local output=$2
 
   echo "$output" | grep -qF "$expected" || fail "Expected line not found: $expected"
-}
-
-check_process_status() {
-  local process_name="$1"
-
-  if pgrep -f "$process_name" > /dev/null; then
-    echo "Process is running"
-  else
-    echo "Process is not running"
-  fi
 }
 
 @test "secrets successfully loaded from providers" {
@@ -183,21 +230,36 @@ check_process_status() {
   assert_output_contains "RABBITMQ_PASSWORD=rabbitmqPassword" "$run_output"
 }
 
-@test "secrets successfully loaded from providers using vault:login and bao:login as tokens and daemon mode enabled" {
-  set_daemon_mode
-
+@test "secrets successfully loaded and renewed with daemon mode enabled" {
   setup_file_provider
 
   setup_vault_provider
-  set_vault_token "vault:login"
+  set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_vault
 
   setup_bao_provider
-  set_bao_token "bao:login"
+  set_bao_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_bao
+
+  set_daemon_mode
+  setup_database_for_daemon_mode
+
+  # Generate a new secret and get its lease duration
+  secret_info_vault_before=$(docker exec "$vault_container_name" vault read -format=json database/creds/my-role-vault)
+  lease_id_vault_before=$(echo "$secret_info_vault_before" | jq -r '.lease_id')
+
+  secret_info_bao_before=$(docker exec "$bao_container_name" bao read -format=json database/creds/my-role-bao)
+  lease_id_bao_before=$(echo "$secret_info_bao_before" | jq -r '.lease_id')
 
   run_output=$(./secret-init env | grep 'FILE_SECRET\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD')
   assert_success
+
+  # Get the lease ID adter renewing the secret
+  secret_info_vault_after=$(docker exec "$vault_container_name" vault read -format=json database/creds/my-role-vault)
+  lease_id_vault_after=$(echo "$secret_info_vault_after" | jq -r '.lease_id')
+
+  secret_info_bao_after=$(docker exec "$bao_container_name" bao read -format=json database/creds/my-role-bao)
+  lease_id_bao_after=$(echo "$secret_info_bao_after" | jq -r '.lease_id')
 
   assert_output_contains "FILE_SECRET=secret-value" "$run_output"
   assert_output_contains "MYSQL_PASSWORD=3xtr3ms3cr3t" "$run_output"
@@ -207,9 +269,15 @@ check_process_status() {
   assert_output_contains "RABBITMQ_USERNAME=rabbitmqUser" "$run_output"
   assert_output_contains "RABBITMQ_PASSWORD=rabbitmqPassword" "$run_output"
 
-  # Check if the process is still running in the background
-  check_process_status "secret-init env"
-  assert_success
+  # Check if the lease ID has changed
+  if [ "$lease_id_vault_before" == "$lease_id_vault_after" ]; then
+    fail "Secret was not renewed"
+  fi
+
+  # Check if the lease ID has changed
+  if [ "$lease_id_bao_before" == "$lease_id_bao_after" ]; then
+    fail "Secret was not renewed"
+  fi
 }
 
 @test "secrets successfully loaded using VAULT_FROM_PATH and BAO_FROM_PATH" {
