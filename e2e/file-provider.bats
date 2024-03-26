@@ -10,7 +10,6 @@ setup_file_provider() {
   add_secret_file
 
   export FILE_MOUNT_PATH="/"
-
   export FILE_SECRET="file:$TMPFILE_SECRET"
 }
 

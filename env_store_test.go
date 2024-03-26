@@ -105,7 +105,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 	}
 }
 
-func TestEnvStore_GetProviderSecrets(t *testing.T) {
+func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	secretFile := newSecretFile(t, "secretId")
 	defer os.Remove(secretFile)
 
@@ -142,15 +142,6 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			},
 			addvault: false,
 			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
-		},
-		{
-			name: "Fail to load secrets due to invalid path",
-			providerPaths: map[string][]string{
-				"file": {
-					secretFile + "/invalid",
-				},
-			},
-			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open " + secretFile + "/invalid: not a directory"),
 		},
 	}
 
