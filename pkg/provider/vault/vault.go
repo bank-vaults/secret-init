@@ -27,7 +27,6 @@ import (
 	"github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
-	"github.com/bank-vaults/secret-init/pkg/internal/utils"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
@@ -69,7 +68,7 @@ func (s *sanitized) append(key string, value string) {
 }
 
 func NewProvider(config *Config, appConfig *common.Config) (provider.Provider, error) {
-	clientOptions := []vault.ClientOption{vault.ClientLogger(utils.ClientLogger{Logger: slog.Default()})}
+	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {

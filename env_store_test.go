@@ -95,7 +95,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 				os.Clearenv()
 			})
 
-			paths := NewEnvStore().GetProviderPaths()
+			paths := NewEnvStore(&common.Config{}).GetProviderPaths()
 
 			for key, expectedSlice := range ttp.wantPaths {
 				actualSlice, ok := paths[key]
@@ -151,7 +151,7 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			providerSecrets, err := NewEnvStore().LoadProviderSecrets(ttp.providerPaths, &common.Config{})
+			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
@@ -208,7 +208,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			secretsEnv, err := NewEnvStore().ConvertProviderSecrets(ttp.providerSecrets)
+			secretsEnv, err := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

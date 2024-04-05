@@ -38,10 +38,11 @@ var supportedProviders = []string{
 // EnvStore is a helper for managing interactions between environment variables and providers,
 // including tasks like extracting and converting provider-specific paths and secrets.
 type EnvStore struct {
-	data map[string]string
+	data      map[string]string
+	appConfig *common.Config
 }
 
-func NewEnvStore() *EnvStore {
+func NewEnvStore(appConfig *common.Config) *EnvStore {
 	environ := make(map[string]string, len(os.Environ()))
 	for _, env := range os.Environ() {
 		split := strings.SplitN(env, "=", 2)
@@ -51,7 +52,8 @@ func NewEnvStore() *EnvStore {
 	}
 
 	return &EnvStore{
-		data: environ,
+		data:      environ,
+		appConfig: appConfig,
 	}
 }
 
@@ -83,7 +85,7 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a map with the provider name as the key.
-func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string, appConfig *common.Config) (map[string][]provider.Secret, error) {
+func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
 	providerSecrets := make(map[string][]provider.Secret)
@@ -93,7 +95,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string, appCon
 	vaultPaths, ok := providerPaths[vault.ProviderName]
 	if ok {
 		var err error
-		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths, appConfig)
+		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths)
 		if err != nil {
 			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
 		}
@@ -111,7 +113,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string, appCon
 		go func(providerName string, paths []string, errCh chan<- error) {
 			defer wg.Done()
 
-			provider, err := newProvider(providerName, appConfig)
+			provider, err := newProvider(providerName, s.appConfig)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
 				return
@@ -148,10 +150,10 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string, appCon
 }
 
 // Workaround for openBao, essentially loading secretes from Vault first.
-func (s *EnvStore) workaroundForBao(vaultPaths []string, appConfig *common.Config) ([]provider.Secret, error) {
+func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 
-	provider, err := newProvider(vault.ProviderName, appConfig)
+	provider, err := newProvider(vault.ProviderName, s.appConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider %s: %w", vault.ProviderName, err)
 	}

@@ -1,4 +1,4 @@
-// Copyright © 2023 Bank-Vaults Maintainers
+// Copyright © 2024 Bank-Vaults Maintainers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import (
 	bao "github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
-	"github.com/bank-vaults/secret-init/pkg/internal/utils"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
@@ -69,7 +68,7 @@ func (s *sanitized) append(key string, value string) {
 }
 
 func NewProvider(config *Config, appConfig *common.Config) (*Provider, error) {
-	clientOptions := []bao.ClientOption{bao.ClientLogger(utils.ClientLogger{Logger: slog.Default()})}
+	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, bao.ClientToken(config.Token))
 	} else {
