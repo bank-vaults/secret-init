@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bank-vaults/secret-init/pkg/common"
 )
 
 var originalLogger *slog.Logger
@@ -77,7 +79,7 @@ func TestNewProvider(t *testing.T) {
 		ttp := tt
 
 		t.Run(ttp.name, func(t *testing.T) {
-			provider, err := NewProvider(ttp.config)
+			provider, err := NewProvider(ttp.config, &common.Config{})
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

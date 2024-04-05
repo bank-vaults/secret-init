@@ -20,18 +20,20 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 
 	injector "github.com/bank-vaults/internal/pkg/baoinjector"
 	bao "github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
+	"github.com/bank-vaults/secret-init/pkg/internal/utils"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-const (
-	ProviderName = "bao"
-	Re           = `(bao:)(.*)#(.*)`
+var (
+	ProviderName     = "bao"
+	ProviderEnvRegex = regexp.MustCompile(`(bao:)(.*)#(.*)`)
 )
 
 type Provider struct {
@@ -66,8 +68,8 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config) (*Provider, error) {
-	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()})}
+func NewProvider(config *Config, appConfig *common.Config) (*Provider, error) {
+	clientOptions := []bao.ClientOption{bao.ClientLogger(utils.ClientLogger{Logger: slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, bao.ClientToken(config.Token))
 	} else {
@@ -82,13 +84,6 @@ func NewProvider(config *Config) (*Provider, error) {
 	client, err := bao.NewClientWithOptions(clientOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bao client: %w", err)
-	}
-
-	// Accessing the application configuration is necessary
-	// to determine whether daemon mode is enabled
-	appConfig, err := common.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load application config: %w", err)
 	}
 
 	injectorConfig := injector.Config{

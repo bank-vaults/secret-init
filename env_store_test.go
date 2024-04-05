@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
@@ -150,7 +151,7 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			providerSecrets, err := NewEnvStore().LoadProviderSecrets(ttp.providerPaths)
+			providerSecrets, err := NewEnvStore().LoadProviderSecrets(ttp.providerPaths, &common.Config{})
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

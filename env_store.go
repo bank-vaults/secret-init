@@ -19,10 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 	"github.com/bank-vaults/secret-init/pkg/provider/bao"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
@@ -83,7 +83,7 @@ func (s *EnvStore) GetProviderPaths() map[string][]string {
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a map with the provider name as the key.
-func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
+func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string, appConfig *common.Config) (map[string][]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
 	providerSecrets := make(map[string][]provider.Secret)
@@ -93,7 +93,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 	vaultPaths, ok := providerPaths[vault.ProviderName]
 	if ok {
 		var err error
-		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths)
+		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths, appConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
 		}
@@ -111,7 +111,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 		go func(providerName string, paths []string, errCh chan<- error) {
 			defer wg.Done()
 
-			provider, err := newProvider(providerName)
+			provider, err := newProvider(providerName, appConfig)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
 				return
@@ -148,10 +148,10 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 }
 
 // Workaround for openBao, essentially loading secretes from Vault first.
-func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, error) {
+func (s *EnvStore) workaroundForBao(vaultPaths []string, appConfig *common.Config) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 
-	provider, err := newProvider(vault.ProviderName)
+	provider, err := newProvider(vault.ProviderName, appConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider %s: %w", vault.ProviderName, err)
 	}
@@ -198,26 +198,22 @@ func getProviderPath(path string) (string, string) {
 
 	// If the path contains some string formatted as "vault:{STR}#{STR}"
 	// it is most probably a vault path
-	vaultRe := regexp.MustCompile(vault.Re)
-	if vaultRe.MatchString(path) {
-		var vaultProviderName = vault.ProviderName
+	if vault.ProviderEnvRegex.MatchString(path) {
 		// Do not remove the prefix since it will be processed during injection
-		return vaultProviderName, path
+		return vault.ProviderName, path
 	}
 
 	// If the path contains some string formatted as "bao:{STR}#{STR}"
 	// it is most probably a vault path
-	baoRe := regexp.MustCompile(bao.Re)
-	if baoRe.MatchString(path) {
-		var baoProviderName = bao.ProviderName
+	if bao.ProviderEnvRegex.MatchString(path) {
 		// Do not remove the prefix since it will be processed during injection
-		return baoProviderName, path
+		return bao.ProviderName, path
 	}
 
 	return "", path
 }
 
-func newProvider(providerName string) (provider.Provider, error) {
+func newProvider(providerName string, appConfig *common.Config) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
 		config := file.LoadConfig()
@@ -233,7 +229,7 @@ func newProvider(providerName string) (provider.Provider, error) {
 			return nil, fmt.Errorf("failed to create vault config: %w", err)
 		}
 
-		provider, err := vault.NewProvider(config)
+		provider, err := vault.NewProvider(config, appConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vault provider: %w", err)
 		}
@@ -245,7 +241,7 @@ func newProvider(providerName string) (provider.Provider, error) {
 			return nil, fmt.Errorf("failed to create bao config: %w", err)
 		}
 
-		provider, err := bao.NewProvider(config)
+		provider, err := bao.NewProvider(config, appConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bao provider: %w", err)
 		}

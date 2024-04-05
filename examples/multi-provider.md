@@ -1,6 +1,6 @@
-# Secret-init as a standalone tool
+# Multi-provider
 
-## Multi-provider setup
+> This setup works with any combinations of providers, check out the [single provider use cases](README.md).
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@
 ## Environment setup
 
 ```bash
-# Deploy a Vault and a Bao instance
+# Deploy a Vault (and a Bao) instance
 make up
 ```
 
@@ -46,22 +46,6 @@ docker exec secret-init-vault vault kv put secret/test/mysql MYSQL_PASSWORD=3xtr
 docker exec secret-init-vault vault kv put secret/test/aws AWS_ACCESS_KEY_ID=secretId AWS_SECRET_ACCESS_KEY=s3cr3t
 ```
 
-### Prepare Bao provider
-
-```bash
-export BAO_ADDR=http://127.0.0.1:8300
-# Create a tokenfile
-export BAO_TOKEN=227e1cce-6bf7-30bb-2d2a-acc854318caf
-printf $BAO_TOKEN > "example/bao-token-file"
-export BAO_TOKEN_FILE=$PWD/example/bao-token-file
-
-#NOTE: Secret-init can authenticate to Bao by supplying role/path credentials.
-
-# Create secrets for the vault provider
-docker exec secret-init-bao bao kv put secret/test/api API_KEY=sensitiveApiKey
-docker exec secret-init-bao bao kv put secret/test/rabbitmq RABBITMQ_USERNAME=rabbitmqUser RABBITMQ_PASSWORD=rabbitmqPassword
-```
-
 ## Define secrets to inject
 
 ```bash
@@ -71,9 +55,6 @@ export FILE_SECRET_2=file:$PWD/example/super-secret-value
 export MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD
 export AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY
 export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
-export API_KEY="bao:secret/data/test/api#API_KEY"
-export RABBITMQ_USERNAME="bao:secret/data/test/rabbitmq#RABBITMQ_USERNAME"
-export RABBITMQ_PASSWORD="bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD"
 ```
 
 ## Run secret-init
@@ -86,7 +67,7 @@ go build
 export SECRET_INIT_DAEMON="true"
 
 # Run secret-init with a command e.g.
-./secret-init env | grep 'FILE_SECRET_1\|FILE_SECRET_2\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID\|API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD'
+./secret-init env | grep 'FILE_SECRET_1\|FILE_SECRET_2\|MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID'
 ```
 
 ## Cleanup
@@ -103,16 +84,10 @@ make down
 unset VAULT_ADDR
 unset VAULT_TOKEN
 unset VAULT_TOKEN_FILE
-unset BAO_ADDR
-unset BAO_TOKEN
-unset BAO_TOKEN_FILE
 unset SECRET_INIT_DAEMON
 unset FILE_SECRET_1
 unset FILE_SECRET_2
 unset MYSQL_PASSWORD
 unset AWS_SECRET_ACCESS_KEY
 unset AWS_ACCESS_KEY_ID
-unset API_KEY
-unset RABBITMQ_USERNAME
-unset RABBITMQ_PASSWORD
 ```

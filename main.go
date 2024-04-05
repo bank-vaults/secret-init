@@ -54,7 +54,7 @@ func main() {
 
 	providerPaths := envStore.GetProviderPaths()
 
-	providerSecrets, err := envStore.LoadProviderSecrets(providerPaths)
+	providerSecrets, err := envStore.LoadProviderSecrets(providerPaths, config)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to extract secrets: %w", err).Error())
 		os.Exit(1)

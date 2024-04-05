@@ -20,18 +20,20 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 
 	injector "github.com/bank-vaults/internal/pkg/vaultinjector"
 	"github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
+	"github.com/bank-vaults/secret-init/pkg/internal/utils"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-const (
-	ProviderName = "vault"
-	Re           = `(vault:)(.*)#(.*)`
+var (
+	ProviderName     = "vault"
+	ProviderEnvRegex = regexp.MustCompile(`(vault:)(.*)#(.*)`)
 )
 
 type Provider struct {
@@ -66,8 +68,8 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config) (provider.Provider, error) {
-	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
+func NewProvider(config *Config, appConfig *common.Config) (provider.Provider, error) {
+	clientOptions := []vault.ClientOption{vault.ClientLogger(utils.ClientLogger{Logger: slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {
@@ -82,13 +84,6 @@ func NewProvider(config *Config) (provider.Provider, error) {
 	client, err := vault.NewClientWithOptions(clientOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vault client: %w", err)
-	}
-
-	// Accessing the application configuration is necessary
-	// to determine whether daemon mode is enabled
-	appConfig, err := common.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load application config: %w", err)
 	}
 
 	injectorConfig := injector.Config{
