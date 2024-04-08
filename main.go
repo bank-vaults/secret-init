@@ -50,7 +50,7 @@ func main() {
 	}
 
 	// Fetch all provider secrets and assemble env variables using envstore
-	envStore := NewEnvStore()
+	envStore := NewEnvStore(config)
 
 	providerPaths := envStore.GetProviderPaths()
 
@@ -140,7 +140,7 @@ func initLogger(config *common.Config) {
 	}
 
 	levelFilter := func(levels ...slog.Level) func(ctx context.Context, r slog.Record) bool {
-		return func(ctx context.Context, r slog.Record) bool {
+		return func(_ context.Context, r slog.Record) bool {
 			return slices.Contains(levels, r.Level)
 		}
 	}
@@ -184,7 +184,7 @@ func initLogger(config *common.Config) {
 
 	// TODO: add level filter handler
 	logger := slog.New(router.Handler())
-	logger = logger.With(slog.String("app", "vault-secret-init"))
+	logger = logger.With(slog.String("app", "secret-init"))
 
 	// Set the default logger to the configured logger,
 	// enabling direct usage of the slog package for logging.

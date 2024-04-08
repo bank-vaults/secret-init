@@ -1,4 +1,4 @@
-// Copyright © 2023 Bank-Vaults Maintainers
+// Copyright © 2024 Bank-Vaults Maintainers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vault
+package bao
 
 import (
 	"context"
@@ -23,21 +23,21 @@ import (
 	"regexp"
 	"strings"
 
-	injector "github.com/bank-vaults/internal/pkg/vaultinjector"
-	"github.com/bank-vaults/vault-sdk/vault"
+	injector "github.com/bank-vaults/internal/pkg/baoinjector"
+	bao "github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
 var (
-	ProviderName     = "vault"
-	ProviderEnvRegex = regexp.MustCompile(`(vault:)(.*)#(.*)`)
+	ProviderName     = "bao"
+	ProviderEnvRegex = regexp.MustCompile(`(bao:)(.*)#(.*)`)
 )
 
 type Provider struct {
 	isLogin        bool
-	client         *vault.Client
+	client         *bao.Client
 	injectorConfig injector.Config
 	secretRenewer  injector.SecretRenewer
 	fromPath       string
@@ -49,12 +49,12 @@ type sanitized struct {
 	login   bool
 }
 
-// VAULT_* variables are not populated into this list if this is not a login scenario.
+// BAO_* variables are not populated into this list if this is not a login scenario.
 func (s *sanitized) append(key string, value string) {
 	envType, ok := sanitizeEnvmap[key]
 	// If the key being appended is not present in sanitizeEnvmap, it signifies that
-	// it is not a VAULT_* variable.
-	// Additionally, in a login scenario, we include VAULT_* variables in the secrets list.
+	// it is not a BAO_* variable.
+	// Additionally, in a login scenario, we include BAO_* variables in the secrets list.
 	if !ok || (s.login && envType.login) {
 		// Path here is actually the secret's key,
 		// An example of this can be found at the LoadSecrets() function below
@@ -67,22 +67,22 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config, appConfig *common.Config) (provider.Provider, error) {
-	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
+func NewProvider(config *Config, appConfig *common.Config) (*Provider, error) {
+	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
-		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
+		clientOptions = append(clientOptions, bao.ClientToken(config.Token))
 	} else {
 		// use role/path based authentication
 		clientOptions = append(clientOptions,
-			vault.ClientRole(config.Role),
-			vault.ClientAuthPath(config.AuthPath),
-			vault.ClientAuthMethod(config.AuthMethod),
+			bao.ClientRole(config.Role),
+			bao.ClientAuthPath(config.AuthPath),
+			bao.ClientAuthMethod(config.AuthMethod),
 		)
 	}
 
-	client, err := vault.NewClientWithOptions(clientOptions...)
+	client, err := bao.NewClientWithOptions(clientOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vault client: %w", err)
+		return nil, fmt.Errorf("failed to create bao client: %w", err)
 	}
 
 	injectorConfig := injector.Config{
@@ -121,22 +121,22 @@ func NewProvider(config *Config, appConfig *common.Config) (provider.Provider, e
 // returns: []provider.Secret{provider.Secret{Path: "MYSQL_PASSWORD", Value: "password"}}
 func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
 	sanitized := sanitized{login: p.isLogin}
-	vaultEnviron := parsePathsToMap(paths)
+	baoEnviron := parsePathsToMap(paths)
 
 	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, slog.Default())
 	inject := func(key, value string) {
 		sanitized.append(key, value)
 	}
 
-	err := secretInjector.InjectSecretsFromVault(vaultEnviron, inject)
+	err := secretInjector.InjectSecretsFromBao(baoEnviron, inject)
 	if err != nil {
-		return nil, fmt.Errorf("failed to inject secrets from vault: %w", err)
+		return nil, fmt.Errorf("failed to inject secrets from bao: %w", err)
 	}
 
 	if p.fromPath != "" {
-		err = secretInjector.InjectSecretsFromVaultPath(p.fromPath, inject)
+		err = secretInjector.InjectSecretsFromBaoPath(p.fromPath, inject)
 		if err != nil {
-			return nil, fmt.Errorf("failed to inject secrets from vault path: %w", err)
+			return nil, fmt.Errorf("failed to inject secrets from bao path: %w", err)
 		}
 	}
 
@@ -155,14 +155,14 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 }
 
 func parsePathsToMap(paths []string) map[string]string {
-	vaultEnviron := make(map[string]string)
+	baoEnviron := make(map[string]string)
 
 	for _, path := range paths {
 		split := strings.SplitN(path, "=", 2)
 		key := split[0]
 		value := split[1]
-		vaultEnviron[key] = value
+		baoEnviron[key] = value
 	}
 
-	return vaultEnviron
+	return baoEnviron
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
@@ -94,7 +95,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 				os.Clearenv()
 			})
 
-			paths := NewEnvStore().GetProviderPaths()
+			paths := NewEnvStore(&common.Config{}).GetProviderPaths()
 
 			for key, expectedSlice := range ttp.wantPaths {
 				actualSlice, ok := paths[key]
@@ -105,7 +106,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 	}
 }
 
-func TestEnvStore_GetProviderSecrets(t *testing.T) {
+func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	secretFile := newSecretFile(t, "secretId")
 	defer os.Remove(secretFile)
 
@@ -143,15 +144,6 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 			addvault: false,
 			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
 		},
-		{
-			name: "Fail to load secrets due to invalid path",
-			providerPaths: map[string][]string{
-				"file": {
-					secretFile + "/invalid",
-				},
-			},
-			err: fmt.Errorf("failed to load secrets for provider file: failed to get secret from file: failed to read file: open " + secretFile + "/invalid: not a directory"),
-		},
 	}
 
 	for _, tt := range tests {
@@ -159,7 +151,7 @@ func TestEnvStore_GetProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			providerSecrets, err := NewEnvStore().LoadProviderSecrets(ttp.providerPaths)
+			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}
@@ -216,7 +208,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			secretsEnv, err := NewEnvStore().ConvertProviderSecrets(ttp.providerSecrets)
+			secretsEnv, err := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

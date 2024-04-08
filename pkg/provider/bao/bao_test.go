@@ -1,4 +1,4 @@
-// Copyright © 2023 Bank-Vaults Maintainers
+// Copyright © 2024 Bank-Vaults Maintainers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vault
+package bao
 
 import (
 	"fmt"
@@ -58,10 +58,10 @@ func TestNewProvider(t *testing.T) {
 			wantType: true,
 		},
 		{
-			name: "Valid Provider with vault:login as Token and daemon mode",
+			name: "Valid Provider with bao:login as Token and daemon mode",
 			config: &Config{
 				IsLogin:              true,
-				Token:                vaultLogin,
+				Token:                baoLogin,
 				TokenFile:            "root",
 				IgnoreMissingSecrets: true,
 				FromPath:             "secret/data/test",
@@ -69,9 +69,9 @@ func TestNewProvider(t *testing.T) {
 			wantType: true,
 		},
 		{
-			name:   "Fail to create vault client due to timeout",
+			name:   "Fail to create bao client due to timeout",
 			config: &Config{},
-			err:    fmt.Errorf("failed to create vault client: timeout [10s] during waiting for Vault token"),
+			err:    fmt.Errorf("failed to create bao client: timeout [10s] during waiting for Vault token"),
 		},
 	}
 
