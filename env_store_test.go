@@ -25,7 +25,7 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-func TestEnvStore_GetProviderPaths(t *testing.T) {
+func TestEnvStore_GetSecretReferences(t *testing.T) {
 	tests := []struct {
 		name      string
 		envs      map[string]string
@@ -38,7 +38,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 			},
 			wantPaths: map[string][]string{
 				"file": {
-					"secret/data/test/aws",
+					"AWS_SECRET_ACCESS_KEY_ID=file:secret/data/test/aws",
 				},
 			},
 		},
@@ -66,19 +66,67 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 			},
 		},
 		{
+			name: "bao provider",
+			envs: map[string]string{
+				"ACCOUNT_PASSWORD_1":              "bao:secret/data/account#password#1",
+				"ACCOUNT_PASSWORD":                "bao:secret/data/account#password",
+				"ROOT_CERT":                       ">>bao:pki/root/generate/internal#certificate",
+				"ROOT_CERT_CACHED":                ">>bao:pki/root/generate/internal#certificate",
+				"INLINE_SECRET":                   "scheme://${bao:secret/data/account#username}:${bao:secret/data/account#password}@127.0.0.1:8080",
+				"INLINE_SECRET_EMBEDDED_TEMPLATE": "scheme://${bao:secret/data/account#username}:${bao:secret/data/account#${.password | urlquery}}@127.0.0.1:8080",
+				"INLINE_DYNAMIC_SECRET":           "${>>bao:pki/root/generate/internal#certificate}__${>>bao:pki/root/generate/internal#certificate}",
+			},
+			wantPaths: map[string][]string{
+				"bao": {
+					"ACCOUNT_PASSWORD_1=bao:secret/data/account#password#1",
+					"ACCOUNT_PASSWORD=bao:secret/data/account#password",
+					"ROOT_CERT=>>bao:pki/root/generate/internal#certificate",
+					"ROOT_CERT_CACHED=>>bao:pki/root/generate/internal#certificate",
+					"INLINE_SECRET=scheme://${bao:secret/data/account#username}:${bao:secret/data/account#password}@127.0.0.1:8080",
+					"INLINE_SECRET_EMBEDDED_TEMPLATE=scheme://${bao:secret/data/account#username}:${bao:secret/data/account#${.password | urlquery}}@127.0.0.1:8080",
+					"INLINE_DYNAMIC_SECRET=${>>bao:pki/root/generate/internal#certificate}__${>>bao:pki/root/generate/internal#certificate}",
+				},
+			},
+		},
+		{
+			name: "aws provider",
+			envs: map[string]string{
+				"AWS_SECRET1": "arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+				"AWS_SECRET2": "arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+			},
+			wantPaths: map[string][]string{
+				"aws": {
+					"AWS_SECRET1=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+					"AWS_SECRET2=arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+				},
+			},
+		},
+		{
 			name: "multi provider",
 			envs: map[string]string{
 				"AWS_SECRET_ACCESS_KEY_ID": "file:secret/data/test/aws",
 				"MYSQL_PASSWORD":           "vault:secret/data/test/mysql#MYSQL_PASSWORD",
 				"AWS_SECRET_ACCESS_KEY":    "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
+				"RABBITMQ_USERNAME":        "bao:secret/data/test/rabbitmq#RABBITMQ_USERNAME",
+				"RABBITMQ_PASSWORD":        "bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD",
+				"AWS_SECRET1":              "arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+				"AWS_SECRET2":              "arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
 			},
 			wantPaths: map[string][]string{
+				"file": {
+					"AWS_SECRET_ACCESS_KEY_ID=file:secret/data/test/aws",
+				},
 				"vault": {
 					"MYSQL_PASSWORD=vault:secret/data/test/mysql#MYSQL_PASSWORD",
 					"AWS_SECRET_ACCESS_KEY=vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY",
 				},
-				"file": {
-					"secret/data/test/aws",
+				"bao": {
+					"RABBITMQ_USERNAME=bao:secret/data/test/rabbitmq#RABBITMQ_USERNAME",
+					"RABBITMQ_PASSWORD=bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD",
+				},
+				"aws": {
+					"AWS_SECRET1=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
+					"AWS_SECRET2=arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
 				},
 			},
 		},
@@ -95,7 +143,7 @@ func TestEnvStore_GetProviderPaths(t *testing.T) {
 				os.Clearenv()
 			})
 
-			paths := NewEnvStore(&common.Config{}).GetProviderPaths()
+			paths := NewEnvStore(&common.Config{}).GetSecretReferences()
 
 			for key, expectedSlice := range ttp.wantPaths {
 				actualSlice, ok := paths[key]
@@ -121,13 +169,13 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 			name: "Load secrets successfully",
 			providerPaths: map[string][]string{
 				"file": {
-					secretFile,
+					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
 			wantProviderSecrets: map[string][]provider.Secret{
 				"file": {
 					{
-						Path:  secretFile,
+						Key:   "AWS_SECRET_ACCESS_KEY_ID",
 						Value: "secretId",
 					},
 				},
@@ -138,7 +186,7 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 			name: "Fail to create provider",
 			providerPaths: map[string][]string{
 				"invalid": {
-					secretFile,
+					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
 			addvault: false,
@@ -178,7 +226,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 			providerSecrets: map[string][]provider.Secret{
 				"file": {
 					{
-						Path:  secretFile,
+						Key:   "AWS_SECRET_ACCESS_KEY_ID",
 						Value: "secretId",
 					},
 				},
@@ -187,19 +235,6 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 				"AWS_SECRET_ACCESS_KEY_ID=secretId",
 			},
 			addvault: false,
-		},
-		{
-			name: "Fail to convert secrets due to fail to find env-key",
-			providerSecrets: map[string][]provider.Secret{
-				"file": {
-					{
-						Path:  secretFile + "/invalid",
-						Value: "secretId",
-					},
-				},
-			},
-			addvault: false,
-			err:      fmt.Errorf("failed to create secret environment variables: failed to find environment variable key for secret path: " + secretFile + "/invalid"),
 		},
 	}
 

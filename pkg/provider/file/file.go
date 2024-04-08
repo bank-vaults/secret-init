@@ -48,23 +48,27 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	var secrets []provider.Secret
 
 	for _, path := range paths {
-		secret, err := p.getSecretFromFile(path)
+		split := strings.SplitN(path, "=", 2)
+		key, valuePath := split[0], split[1]
+		valuePath = strings.TrimPrefix(valuePath, "file:")
+
+		secretValue, err := p.getSecretFromFile(valuePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get secret from file: %w", err)
 		}
 
 		secrets = append(secrets, provider.Secret{
-			Path:  path,
-			Value: secret,
+			Key:   key,
+			Value: secretValue,
 		})
 	}
 
 	return secrets, nil
 }
 
-func (p *Provider) getSecretFromFile(path string) (string, error) {
-	path = strings.TrimLeft(path, "/")
-	content, err := fs.ReadFile(p.fs, path)
+func (p *Provider) getSecretFromFile(valuePath string) (string, error) {
+	valuePath = strings.TrimLeft(valuePath, "/")
+	content, err := fs.ReadFile(p.fs, valuePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}

@@ -52,9 +52,9 @@ func main() {
 	// Fetch all provider secrets and assemble env variables using envstore
 	envStore := NewEnvStore(config)
 
-	providerPaths := envStore.GetProviderPaths()
+	secretReferences := envStore.GetSecretReferences()
 
-	providerSecrets, err := envStore.LoadProviderSecrets(providerPaths)
+	providerSecrets, err := envStore.LoadProviderSecrets(secretReferences)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to extract secrets: %w", err).Error())
 		os.Exit(1)
