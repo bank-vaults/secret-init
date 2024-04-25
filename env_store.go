@@ -87,17 +87,17 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a map with the provider name as the key.
-func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[string][]provider.Secret, error) {
+func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) ([]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
-	providerSecrets := make(map[string][]provider.Secret)
+	var providerSecrets []provider.Secret
 
 	// Workaround for openBao
 	// Remove once openBao uses BAO_ADDR in their client, instead of VAULT_ADDR
 	vaultPaths, ok := providerPaths[vault.ProviderName]
 	if ok {
 		var err error
-		providerSecrets[vault.ProviderName], err = s.workaroundForBao(vaultPaths)
+		providerSecrets, err = s.workaroundForBao(vaultPaths)
 		if err != nil {
 			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
 		}
@@ -128,7 +128,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) (map[s
 			}
 
 			mu.Lock()
-			providerSecrets[providerName] = secrets
+			providerSecrets = append(providerSecrets, secrets...)
 			mu.Unlock()
 		}(providerName, paths, errCh)
 	}
@@ -169,13 +169,11 @@ func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, err
 }
 
 // ConvertProviderSecrets converts the loaded secrets to environment variables
-func (s *EnvStore) ConvertProviderSecrets(providerSecrets map[string][]provider.Secret) ([]string, error) {
+func (s *EnvStore) ConvertProviderSecrets(providerSecrets []provider.Secret) ([]string, error) {
 	var secretsEnv []string
 
-	for _, secrets := range providerSecrets {
-		for _, secret := range secrets {
-			secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Key, secret.Value))
-		}
+	for _, secret := range providerSecrets {
+		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 	}
 
 	return secretsEnv, nil

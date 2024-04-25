@@ -161,7 +161,7 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	tests := []struct {
 		name                string
 		providerPaths       map[string][]string
-		wantProviderSecrets map[string][]provider.Secret
+		wantProviderSecrets []provider.Secret
 		addvault            bool
 		err                 error
 	}{
@@ -172,12 +172,10 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
-			wantProviderSecrets: map[string][]provider.Secret{
-				"file": {
-					{
-						Key:   "AWS_SECRET_ACCESS_KEY_ID",
-						Value: "secretId",
-					},
+			wantProviderSecrets: []provider.Secret{
+				{
+					Key:   "AWS_SECRET_ACCESS_KEY_ID",
+					Value: "secretId",
 				},
 			},
 			addvault: false,
@@ -216,19 +214,17 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		providerSecrets map[string][]provider.Secret
+		providerSecrets []provider.Secret
 		wantSecretsEnv  []string
 		addvault        bool
 		err             error
 	}{
 		{
 			name: "Convert secrets successfully",
-			providerSecrets: map[string][]provider.Secret{
-				"file": {
-					{
-						Key:   "AWS_SECRET_ACCESS_KEY_ID",
-						Value: "secretId",
-					},
+			providerSecrets: []provider.Secret{
+				{
+					Key:   "AWS_SECRET_ACCESS_KEY_ID",
+					Value: "secretId",
 				},
 			},
 			wantSecretsEnv: []string{
