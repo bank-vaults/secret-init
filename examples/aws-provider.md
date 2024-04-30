@@ -8,6 +8,7 @@ The AWS Provider in Secret-init can load secrets from AWS Secrets Manager and AW
 
 - Golang `>= 1.21`
 - Makefile
+- Access to AWS services
 
 ## Environment setup
 
@@ -23,8 +24,8 @@ export AWS_REGION
 ```bash
 # Export environment variables
 export MYSQL_PASSWORD=arn:aws:secretsmanager:eu-north-1:123456789:secret:secret/test/mysql-ASD123
-export SSM_SECRET=arn:aws:ssm:eu-north-1:123456789:parameter/bank-vaults/test
 export SM_JSON=arn:aws:secretsmanager:eu-north-1:123456789:secret:test/secret/JSON-ASD123
+export SSM_SECRET=arn:aws:ssm:eu-north-1:123456789:parameter/bank-vaults/test
 
 # NOTE: Secret-init is designed to identify any secret-reference that starts with "arn:aws:secretsmanager:" or "arn:aws:ssm:"
 ```
@@ -39,7 +40,10 @@ go build
 SECRET_INIT_DAEMON="true"
 
 # Run secret-init with a command e.g.
-./secret-init env | grep 'SM_JSON\|MYSQL_PASSWORD\|firsts3cr3t\|seconds3cr3t\|SSM_SECRET'
+./secret-init env | grep 'MYSQL_PASSWORD\|SM_JSON\|SSM_SECRET'
+
+# JSON secrets are loaded as is:
+# SM_JSON="{"firsts3cr3t":"s3cr3ton3","seconds3cr3t":"s3cr3ttwo"}"
 ```
 
 ## Cleanup

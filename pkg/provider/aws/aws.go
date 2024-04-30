@@ -60,9 +60,9 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 				return nil, errors.Wrap(err, "failed to get secret from AWS secrets manager")
 			}
 
-			if json.Valid([]byte(*secret.SecretString)) {
+			if json.Valid([]byte(aws.StringValue(secret.SecretString))) {
 				var secretValue map[string]interface{}
-				err := json.Unmarshal([]byte(*secret.SecretString), &secretValue)
+				err := json.Unmarshal([]byte(aws.StringValue(secret.SecretString)), &secretValue)
 				if err != nil {
 					return nil, errors.Wrap(err, "failed to unmarshal secret value")
 				}
@@ -93,7 +93,6 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 				}
 
 				secrets = append(secrets, secretToAppend)
-
 			} else {
 				// If the secret is not a JSON object, append it directly
 				secretToAppend, err := appendSecret(originalKey, aws.StringValue(secret.SecretString))
@@ -118,7 +117,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 				return nil, errors.Wrap(err, "failed to get parameter from AWS SSM")
 			}
 
-			secretToAppend, err := appendSecret(originalKey, *parameteredSecret.Parameter.Value)
+			secretToAppend, err := appendSecret(originalKey, aws.StringValue(parameteredSecret.Parameter.Value))
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to append secret")
 			}

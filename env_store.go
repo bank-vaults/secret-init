@@ -86,7 +86,7 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
-// The secrets from each provider are then placed into a map with the provider name as the key.
+// The secrets from each provider are then placed into a single slice.
 func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) ([]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
