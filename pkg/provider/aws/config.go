@@ -34,47 +34,43 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	region, err := getRegion()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get region")
+	// Loading session data from shared config is disabled by default and needs to be
+	// explicitly enabled via AWS_LOAD_FROM_SHARED_CONFIG
+	options := session.Options{
+		SharedConfigState: session.SharedConfigDisable,
 	}
 
-	// SharedConfigDisable is the default state,
-	// and will use the AWS_SDK_LOAD_CONFIG environment variable.
-	// LoadFromSharedConfigEnv can be used to enable loading from AWS shared config.
-	var sess *session.Session
-	loadFromSharedConfig := cast.ToBool(os.Getenv(LoadFromSharedConfigEnv))
-	if loadFromSharedConfig {
-		sess = session.Must(session.NewSessionWithOptions(
-			session.Options{
-				Config: aws.Config{
-					Region: region,
-				},
-				SharedConfigState: session.SharedConfigEnable,
-			}))
-	} else {
-		sess = session.Must(session.NewSessionWithOptions(
-			session.Options{
-				Config: aws.Config{
-					Region: region,
-				},
-				SharedConfigState: session.SharedConfigDisable,
-			}))
+	// Override session options from env configs
+	if cast.ToBool(os.Getenv(LoadFromSharedConfigEnv)) {
+		options.SharedConfigState = session.SharedConfigEnable
+	}
+
+	RegionEnv := getRegionEnv()
+	if RegionEnv != nil {
+		options.Config = aws.Config{Region: RegionEnv}
+	}
+
+	// Create session
+	sess, err := session.NewSessionWithOptions(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create AWS session")
 	}
 
 	return &Config{session: sess}, nil
 }
 
-func getRegion() (*string, error) {
+func getRegionEnv() *string {
 	region, hasRegion := os.LookupEnv(RegionEnv)
-	if !hasRegion {
-		defaultRegion, hasDefaultRegion := os.LookupEnv(DefaultRegionEnv)
-		if hasDefaultRegion {
-			return &defaultRegion, nil
-		}
-
-		return nil, errors.New("no region found")
+	if hasRegion {
+		return aws.String(region)
 	}
 
-	return &region, nil
+	defaultRegion, hasDefaultRegion := os.LookupEnv(DefaultRegionEnv)
+	if hasDefaultRegion {
+		return aws.String(defaultRegion)
+	}
+
+	// Return nil if no region is found, allowing the AWS SDK to attempt to
+	// determine the region from the shared config or environment variables.
+	return nil
 }

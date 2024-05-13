@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -197,7 +198,7 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(ttp.providerPaths)
+			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(context.Background(), ttp.providerPaths)
 			if err != nil {
 				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
 			}

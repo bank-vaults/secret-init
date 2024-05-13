@@ -16,7 +16,9 @@ package aws
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"emperror.dev/errors"
@@ -41,7 +43,7 @@ func NewProvider(config *Config) *Provider {
 	}
 }
 
-func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
+func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 
 	for _, path := range paths {
@@ -52,7 +54,8 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 		// arn:aws:secretsmanager:region:account-id:secret:secret-name
 		// secretsmanager:secret-name
 		if strings.Contains(secretID, "secretsmanager:") {
-			secret, err := p.sm.GetSecretValue(
+			secret, err := p.sm.GetSecretValueWithContext(
+				ctx,
 				&secretsmanager.GetSecretValueInput{
 					SecretId: aws.String(secretID),
 				})
@@ -60,47 +63,28 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 				return nil, errors.Wrap(err, "failed to get secret from AWS secrets manager")
 			}
 
-			if json.Valid([]byte(aws.StringValue(secret.SecretString))) {
-				var secretValue map[string]interface{}
-				err := json.Unmarshal([]byte(aws.StringValue(secret.SecretString)), &secretValue)
-				if err != nil {
-					return nil, errors.Wrap(err, "failed to unmarshal secret value")
-				}
+			secretBytes, err := extractSecretValueFromSM(secret)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to extract secret value from AWS secrets manager")
+			}
 
-				// If there is only one key in the secret, append it directly
-				if len(secretValue) == 1 {
-					for _, value := range secretValue {
-						secretToAppend, err := appendSecret(originalKey, value)
-						if err != nil {
-							return nil, errors.Wrap(err, "failed to append secret")
-						}
+			secretValue, err := parseSecretValueFromSM(secretBytes)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to parse secret value from AWS secrets manager")
+			}
 
-						secrets = append(secrets, secretToAppend)
-					}
+			switch value := secretValue.(type) {
+			case string:
+				secrets = append(secrets, provider.Secret{
+					Key:   originalKey,
+					Value: value,
+				})
 
-					continue
-				}
-
-				// If the secret is a JSON object, append it as a single secret
-				JSONValue, err := json.Marshal(secretValue)
-				if err != nil {
-					return nil, errors.Wrap(err, "failed to marshal secret value")
-				}
-
-				secretToAppend, err := appendSecret(originalKey, JSONValue)
-				if err != nil {
-					return nil, errors.Wrap(err, "failed to append secret")
-				}
-
-				secrets = append(secrets, secretToAppend)
-			} else {
-				// If the secret is not a JSON object, append it directly
-				secretToAppend, err := appendSecret(originalKey, aws.StringValue(secret.SecretString))
-				if err != nil {
-					return nil, errors.Wrap(err, "failed to append secret")
-				}
-
-				secrets = append(secrets, secretToAppend)
+			case []byte:
+				secrets = append(secrets, provider.Secret{
+					Key:   originalKey,
+					Value: string(value),
+				})
 			}
 		}
 
@@ -108,7 +92,8 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 		// arn:aws:ssm:region:account-id:parameter/path/to/parameter-name
 		// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
 		if strings.Contains(secretID, "ssm:") {
-			parameteredSecret, err := p.ssm.GetParameter(
+			parameteredSecret, err := p.ssm.GetParameterWithContext(
+				ctx,
 				&ssm.GetParameterInput{
 					Name:           aws.String(secretID),
 					WithDecryption: aws.Bool(true),
@@ -117,33 +102,61 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 				return nil, errors.Wrap(err, "failed to get parameter from AWS SSM")
 			}
 
-			secretToAppend, err := appendSecret(originalKey, aws.StringValue(parameteredSecret.Parameter.Value))
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to append secret")
-			}
-
-			secrets = append(secrets, secretToAppend)
+			secrets = append(secrets, provider.Secret{
+				Key:   originalKey,
+				Value: aws.StringValue(parameteredSecret.Parameter.Value),
+			})
 		}
 	}
 
 	return secrets, nil
 }
 
-func appendSecret(key string, value interface{}) (provider.Secret, error) {
-	switch v := value.(type) {
-	case string:
-		return provider.Secret{
-			Key:   key,
-			Value: v,
-		}, nil
-
-	case []byte:
-		return provider.Secret{
-			Key:   key,
-			Value: string(v),
-		}, nil
-
-	default:
-		return provider.Secret{}, errors.New("unsupported secret value type")
+// https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+func extractSecretValueFromSM(secret *secretsmanager.GetSecretValueOutput) ([]byte, error) {
+	// Secret available as string
+	if secret.SecretString != nil {
+		return []byte(aws.StringValue(secret.SecretString)), nil
 	}
+
+	// Secret available as binary
+	decodedSecret, err := base64.StdEncoding.DecodeString(string(secret.SecretBinary))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode secret: %w", err)
+	}
+
+	return decodedSecret, nil
+}
+
+// Parse the secret value from AWS Secrets Manager
+func parseSecretValueFromSM(secretBytes []byte) (interface{}, error) {
+	// If the secret is not a JSON object, append it as a single secret
+	if !json.Valid(secretBytes) {
+		return string(secretBytes), nil
+	}
+
+	var secretValue map[string]interface{}
+	err := json.Unmarshal(secretBytes, &secretValue)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal secret value")
+	}
+
+	// If the map contains a single KV, the actual secret is the value
+	if len(secretValue) == 1 {
+		for _, value := range secretValue {
+			value, err := json.Marshal(value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal secret from map: %w", err)
+			}
+			return value, nil
+		}
+	}
+
+	// If the secret is a JSON object, append it as a single secret
+	JSONValue, err := json.Marshal(secretValue)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal secret value")
+	}
+
+	return JSONValue, nil
 }

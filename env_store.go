@@ -87,7 +87,7 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 // LoadProviderSecrets creates a new provider for each detected provider using a specified config.
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a single slice.
-func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) ([]provider.Secret, error) {
+func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[string][]string) ([]provider.Secret, error) {
 	// At most, we will have one error per provider
 	errCh := make(chan error, len(supportedProviders))
 	var providerSecrets []provider.Secret
@@ -121,7 +121,7 @@ func (s *EnvStore) LoadProviderSecrets(providerPaths map[string][]string) ([]pro
 				return
 			}
 
-			secrets, err := provider.LoadSecrets(context.Background(), paths)
+			secrets, err := provider.LoadSecrets(ctx, paths)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to load secrets for provider %s: %w", providerName, err)
 				return

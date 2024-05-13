@@ -54,7 +54,7 @@ func main() {
 
 	secretReferences := envStore.GetSecretReferences()
 
-	providerSecrets, err := envStore.LoadProviderSecrets(secretReferences)
+	providerSecrets, err := envStore.LoadProviderSecrets(context.Background(), secretReferences)
 	if err != nil {
 		slog.Error(fmt.Errorf("failed to extract secrets: %w", err).Error())
 		os.Exit(1)
