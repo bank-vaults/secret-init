@@ -23,6 +23,6 @@ type Provider interface {
 
 // Secret holds Provider-specific secret data.
 type Secret struct {
-	Path  string
+	Key   string
 	Value string
 }

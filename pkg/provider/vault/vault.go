@@ -56,10 +56,9 @@ func (s *sanitized) append(key string, value string) {
 	// it is not a VAULT_* variable.
 	// Additionally, in a login scenario, we include VAULT_* variables in the secrets list.
 	if !ok || (s.login && envType.login) {
-		// Path here is actually the secret's key,
-		// An example of this can be found at the LoadSecrets() function below
+		// Example can be found at the LoadSecrets() function below
 		secret := provider.Secret{
-			Path:  key,
+			Key:   key,
 			Value: value,
 		}
 
@@ -159,8 +158,7 @@ func parsePathsToMap(paths []string) map[string]string {
 
 	for _, path := range paths {
 		split := strings.SplitN(path, "=", 2)
-		key := split[0]
-		value := split[1]
+		key, value := split[0], split[1]
 		vaultEnviron[key] = value
 	}
 

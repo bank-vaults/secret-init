@@ -7,6 +7,7 @@ Discover a range of examples that highlight the functionalities of **secret-init
 - [File provider](file-provider.md)
 - [Vault provider](vault-provider.md)
 - [Bao provider](bao-provider.md)
+- [AWS provider](aws-provider.md)
 
 ## Multi provider use-case
 
