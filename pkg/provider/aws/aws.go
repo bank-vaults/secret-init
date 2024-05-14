@@ -16,7 +16,6 @@ package aws
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -72,19 +71,10 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 				return nil, fmt.Errorf("failed to parse secret value from AWS secrets manager: %w", err)
 			}
 
-			switch value := secretValue.(type) {
-			case string:
-				secrets = append(secrets, provider.Secret{
-					Key:   originalKey,
-					Value: value,
-				})
-
-			case []byte:
-				secrets = append(secrets, provider.Secret{
-					Key:   originalKey,
-					Value: string(value),
-				})
-			}
+			secrets = append(secrets, provider.Secret{
+				Key:   originalKey,
+				Value: string(secretValue),
+			})
 		}
 
 		// Valid ssm parameter examples:
@@ -111,7 +101,12 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	return secrets, nil
 }
 
-// https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+// AWS Secrets Manager can store secrets in two formats:
+// - SecretString: for text-based secrets, returned as a byte slice.
+// - SecretBinary: for binary secrets, returned as a byte slice without additional encoding.
+// If neither is available, the function returns an error.
+//
+// Ref: https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
 func extractSecretValueFromSM(secret *secretsmanager.GetSecretValueOutput) ([]byte, error) {
 	// Secret available as string
 	if secret.SecretString != nil {
@@ -119,19 +114,21 @@ func extractSecretValueFromSM(secret *secretsmanager.GetSecretValueOutput) ([]by
 	}
 
 	// Secret available as binary
-	decodedSecret, err := base64.StdEncoding.DecodeString(string(secret.SecretBinary))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode secret: %w", err)
+	if secret.SecretBinary != nil {
+		return secret.SecretBinary, nil
 	}
 
-	return decodedSecret, nil
+	// Handle the case where neither SecretString nor SecretBinary is available
+	return []byte{}, fmt.Errorf("secret does not contain a value in expected formats")
 }
 
-// Parse the secret value from AWS Secrets Manager
-func parseSecretValueFromSM(secretBytes []byte) (interface{}, error) {
+// parseSecretValueFromSM takes a secret and attempts to parse it.
+// It unifies the handling of all secrets coming from AWS SM,
+// ensuring the output is consistent in the form of a []byte slice.
+func parseSecretValueFromSM(secretBytes []byte) ([]byte, error) {
 	// If the secret is not a JSON object, append it as a single secret
 	if !json.Valid(secretBytes) {
-		return string(secretBytes), nil
+		return secretBytes, nil
 	}
 
 	var secretValue map[string]interface{}
@@ -140,22 +137,18 @@ func parseSecretValueFromSM(secretBytes []byte) (interface{}, error) {
 		return nil, fmt.Errorf("failed to unmarshal secret from AWS Secrets Manager: %w", err)
 	}
 
-	// If the map contains a single KV, the actual secret is the value
+	// If the JSON object contains a single key-value pair, the value is the actual secret
 	if len(secretValue) == 1 {
 		for _, value := range secretValue {
-			value, err := json.Marshal(value)
+			valueBytes, err := json.Marshal(value)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal secret from map: %w", err)
 			}
-			return value, nil
+
+			return valueBytes, nil
 		}
 	}
 
-	// If the secret is a JSON object, append it as a single secret
-	JSONValue, err := json.Marshal(secretValue)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal secret from map: %w", err)
-	}
-
-	return JSONValue, nil
+	// For JSON objects with multiple key-value pairs, the original JSON is returned as is
+	return secretBytes, nil
 }
