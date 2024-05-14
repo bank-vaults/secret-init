@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"emperror.dev/errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -60,17 +59,17 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 					SecretId: aws.String(secretID),
 				})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to get secret from AWS secrets manager")
+				return nil, fmt.Errorf("failed to get secret from AWS secrets manager: %w", err)
 			}
 
 			secretBytes, err := extractSecretValueFromSM(secret)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to extract secret value from AWS secrets manager")
+				return nil, fmt.Errorf("failed to extract secret value from AWS secrets manager: %w", err)
 			}
 
 			secretValue, err := parseSecretValueFromSM(secretBytes)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse secret value from AWS secrets manager")
+				return nil, fmt.Errorf("failed to parse secret value from AWS secrets manager: %w", err)
 			}
 
 			switch value := secretValue.(type) {
@@ -99,7 +98,7 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 					WithDecryption: aws.Bool(true),
 				})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to get parameter from AWS SSM")
+				return nil, fmt.Errorf("failed to get secret from AWS SSM: %w", err)
 			}
 
 			secrets = append(secrets, provider.Secret{
@@ -138,7 +137,7 @@ func parseSecretValueFromSM(secretBytes []byte) (interface{}, error) {
 	var secretValue map[string]interface{}
 	err := json.Unmarshal(secretBytes, &secretValue)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal secret value")
+		return nil, fmt.Errorf("failed to unmarshal secret from AWS Secrets Manager: %w", err)
 	}
 
 	// If the map contains a single KV, the actual secret is the value
@@ -155,7 +154,7 @@ func parseSecretValueFromSM(secretBytes []byte) (interface{}, error) {
 	// If the secret is a JSON object, append it as a single secret
 	JSONValue, err := json.Marshal(secretValue)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal secret value")
+		return nil, fmt.Errorf("failed to marshal secret from map: %w", err)
 	}
 
 	return JSONValue, nil

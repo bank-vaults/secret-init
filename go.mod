@@ -3,7 +3,6 @@ module github.com/bank-vaults/secret-init
 go 1.21.1
 
 require (
-	emperror.dev/errors v0.8.1
 	github.com/aws/aws-sdk-go v1.51.6
 	github.com/bank-vaults/internal v0.3.0
 	github.com/bank-vaults/vault-sdk v0.9.3
@@ -21,6 +20,7 @@ require (
 	cloud.google.com/go/iam v1.1.6 // indirect
 	cloud.google.com/go/kms v1.15.8 // indirect
 	cloud.google.com/go/storage v1.39.1 // indirect
+	emperror.dev/errors v0.8.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2 // indirect

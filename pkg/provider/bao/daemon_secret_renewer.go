@@ -15,12 +15,12 @@
 package bao
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"syscall"
 	"time"
 
-	"emperror.dev/errors"
 	bao "github.com/bank-vaults/vault-sdk/vault"
 	baoapi "github.com/hashicorp/vault/api"
 )
@@ -34,7 +34,7 @@ func (r daemonSecretRenewer) Renew(path string, secret *baoapi.Secret) error {
 	watcherInput := baoapi.LifetimeWatcherInput{Secret: secret}
 	watcher, err := r.client.RawClient().NewLifetimeWatcher(&watcherInput)
 	if err != nil {
-		return errors.Wrap(err, "failed to create secret watcher")
+		return fmt.Errorf("failed to create lifetime watcher: %w", err)
 	}
 
 	go watcher.Start()

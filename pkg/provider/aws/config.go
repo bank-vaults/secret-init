@@ -15,9 +15,9 @@
 package aws
 
 import (
+	"fmt"
 	"os"
 
-	"emperror.dev/errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/spf13/cast"
@@ -45,15 +45,14 @@ func LoadConfig() (*Config, error) {
 		options.SharedConfigState = session.SharedConfigEnable
 	}
 
-	RegionEnv := getRegionEnv()
-	if RegionEnv != nil {
-		options.Config = aws.Config{Region: RegionEnv}
+	if region := getRegionEnv(); region != nil {
+		options.Config = aws.Config{Region: region}
 	}
 
 	// Create session
 	sess, err := session.NewSessionWithOptions(options)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create AWS session")
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
 	return &Config{session: sess}, nil
