@@ -27,6 +27,7 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider/aws"
 	"github.com/bank-vaults/secret-init/pkg/provider/bao"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
+	"github.com/bank-vaults/secret-init/pkg/provider/gcp"
 	"github.com/bank-vaults/secret-init/pkg/provider/vault"
 )
 
@@ -35,6 +36,7 @@ var supportedProviders = []string{
 	vault.ProviderName,
 	bao.ProviderName,
 	aws.ProviderName,
+	gcp.ProviderName,
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -78,6 +80,9 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 
 		case aws.ProviderName:
 			secretReferences[aws.ProviderName] = append(secretReferences[aws.ProviderName], envSecretReference)
+
+		case gcp.ProviderName:
+			secretReferences[gcp.ProviderName] = append(secretReferences[gcp.ProviderName], envSecretReference)
 		}
 	}
 
@@ -97,7 +102,7 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 	vaultPaths, ok := providerPaths[vault.ProviderName]
 	if ok {
 		var err error
-		providerSecrets, err = s.workaroundForBao(vaultPaths)
+		providerSecrets, err = s.workaroundForBao(ctx, vaultPaths)
 		if err != nil {
 			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
 		}
@@ -115,7 +120,7 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 		go func(providerName string, paths []string, errCh chan<- error) {
 			defer wg.Done()
 
-			provider, err := newProvider(providerName, s.appConfig)
+			provider, err := newProvider(ctx, providerName, s.appConfig)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
 				return
@@ -152,15 +157,15 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 }
 
 // Workaround for openBao, essentially loading secretes from Vault first.
-func (s *EnvStore) workaroundForBao(vaultPaths []string) ([]provider.Secret, error) {
+func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 
-	provider, err := newProvider(vault.ProviderName, s.appConfig)
+	provider, err := newProvider(ctx, vault.ProviderName, s.appConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider %s: %w", vault.ProviderName, err)
 	}
 
-	secrets, err = provider.LoadSecrets(context.Background(), vaultPaths)
+	secrets, err = provider.LoadSecrets(ctx, vaultPaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load secrets for provider %s: %w", vault.ProviderName, err)
 	}
@@ -204,10 +209,17 @@ func getProviderPath(path string) (string, string) {
 		return aws.ProviderName, path
 	}
 
+	// Example GCP prefixes:
+	// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}
+	// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}/versions/{VERSION|latest}
+	if strings.HasPrefix(path, "gcp:secretmanager:") {
+		return gcp.ProviderName, path
+	}
+
 	return "", path
 }
 
-func newProvider(providerName string, appConfig *common.Config) (provider.Provider, error) {
+func newProvider(ctx context.Context, providerName string, appConfig *common.Config) (provider.Provider, error) {
 	switch providerName {
 	case file.ProviderName:
 		config := file.LoadConfig()
@@ -248,6 +260,13 @@ func newProvider(providerName string, appConfig *common.Config) (provider.Provid
 		}
 
 		provider := aws.NewProvider(config)
+		return provider, nil
+
+	case gcp.ProviderName:
+		provider, err := gcp.NewProvider(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gcp provider: %w", err)
+		}
 		return provider, nil
 
 	default:

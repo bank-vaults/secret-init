@@ -49,7 +49,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 
 	for _, path := range paths {
 		split := strings.SplitN(path, "=", 2)
-		key, valuePath := split[0], split[1]
+		originalKey, valuePath := split[0], split[1]
 		valuePath = strings.TrimPrefix(valuePath, "file:")
 
 		secretValue, err := p.getSecretFromFile(valuePath)
@@ -58,7 +58,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 		}
 
 		secrets = append(secrets, provider.Secret{
-			Key:   key,
+			Key:   originalKey,
 			Value: secretValue,
 		})
 	}
