@@ -11,13 +11,13 @@
 - **Async loading** - Secrets are loaded asynchronously to improve speed.
 - **Renew secrets** - Use daemon mode to renew secrets in the background.
 
-| **Supported Providers**                                                | **Stability**        |
-|------------------------------------------------------------------------|----------------------|
-| Local provider                                                         | ✅ Production Ready  |
-| [HashiCorp Vault](https://www.vaultproject.io)                         | ✅ Production Ready  |
-| [OpenBao](https://github.com/openbao/openbao)                          | 🟡 Beta              |
-| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)          | ✅ Production Ready  |
-| [Google Cloud Secret Manager](https://cloud.google.com/secret-manager) | ✅ Production Ready  |
+| **Supported Providers**                                                                                                                                                 | **Stability**        |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| Local provider                                                                                                                                                          | ✅ Production Ready  |
+| [HashiCorp Vault](https://www.vaultproject.io)                                                                                                                          | ✅ Production Ready  |
+| [OpenBao](https://github.com/openbao/openbao)                                                                                                                           | 🟡 Beta              |
+| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager) / [AWS Systems Manager Parameter Store](https://aws.amazon.com/systems-manager/features/#Parameter_Store) | ✅ Production Ready  |
+| [Google Cloud Secret Manager](https://cloud.google.com/secret-manager)                                                                                                  | ✅ Production Ready  |
 
 ## Getting started
 
