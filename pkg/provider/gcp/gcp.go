@@ -17,6 +17,7 @@ package gcp
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -61,9 +62,10 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 		if strings.HasPrefix(secretID, "gcp:secretmanager:") {
 			secretID = strings.TrimPrefix(secretID, "gcp:secretmanager:")
 
-			// if no version specified use latest
-			if !strings.Contains(secretID, "/versions/") {
-				secretID = fmt.Sprintf("%s/versions/latest", secretID)
+			// Check if the path has version specified
+			secretID, err := handleVersion(secretID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to handle secret ID version: %v", err)
 			}
 
 			secret, err := p.client.AccessSecretVersion(
@@ -83,4 +85,38 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	}
 
 	return secrets, nil
+}
+
+func handleVersion(secretID string) (string, error) {
+	// If the version is correctly specified, return the secretID as is
+	match, err := regexp.MatchString(`.*/versions/(latest|\d+)$`, secretID)
+	if err != nil {
+		return "", fmt.Errorf("failed to match secret ID with regex: %v", err)
+	}
+	if match {
+		return secretID, nil
+	}
+
+	// If the version is not specified correctly, handle it
+	count := strings.Count(secretID, "/")
+	switch {
+	// If version is not specified at all (default to latest)
+	case count == 3:
+		secretID = fmt.Sprintf("%s/versions/latest", secretID)
+		return secretID, nil
+
+	// Something wrong is specified after the secret name (default to latest)
+	case count >= 4:
+		// Delete the wrongly formatted substring
+		parts := strings.Split(secretID, "/")
+		if len(parts) > 4 {
+			secretID = strings.Join(parts[:4], "/")
+		}
+
+		secretID = fmt.Sprintf("%s/versions/latest", secretID)
+		return secretID, nil
+
+	default:
+		return "", fmt.Errorf("invalid secret ID format: %s", secretID)
+	}
 }
