@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AWS Provider in Secret-init can load secrets from AWS Secrets Manager and AWS Systems Manager (SSM) Parameter Store as well.
+The AWS Provider in Secret-init can load secrets from AWS Secrets Manager and AWS Systems Manager (SSM) Parameter Store as well. This provider interfaces with AWS's API, to fetch and load secrets.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ The AWS Provider in Secret-init can load secrets from AWS Secrets Manager and AW
 ## Environment setup
 
 ```bash
-# Secret-ini requires atleast these environment variables to be set properly
+# Secret-init requires atleast these environment variables to be set properly
 export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_REGION
@@ -23,8 +23,8 @@ export AWS_REGION
 
 ```bash
 # Export environment variables
-export MYSQL_PASSWORD=arn:aws:secretsmanager:eu-north-1:123456789:secret:secret/test/mysql-ASD123
-export SM_JSON=arn:aws:secretsmanager:eu-north-1:123456789:secret:test/secret/JSON-ASD123
+export MYSQL_PASSWORD=arn:aws:secretsmanager:eu-north-1:123456789:secret:bank-vaults/test/mysql-ASD123
+export SM_JSON=arn:aws:secretsmanager:eu-north-1:123456789:secret:bank-vaults/test/JSON-ASD123
 export SSM_SECRET=arn:aws:ssm:eu-north-1:123456789:parameter/bank-vaults/test
 
 # NOTE: Secret-init is designed to identify any secret-reference that starts with "arn:aws:secretsmanager:" or "arn:aws:ssm:"
@@ -34,10 +34,7 @@ export SSM_SECRET=arn:aws:ssm:eu-north-1:123456789:parameter/bank-vaults/test
 
 ```bash
 # Build the secret-init binary
-go build
-
-# Use in daemon mode
-SECRET_INIT_DAEMON="true"
+make build
 
 # Run secret-init with a command e.g.
 ./secret-init env | grep 'MYSQL_PASSWORD\|SM_JSON\|SSM_SECRET'

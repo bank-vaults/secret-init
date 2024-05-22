@@ -11,12 +11,13 @@
 - **Async loading** - Secrets are loaded asynchronously to improve speed.
 - **Renew secrets** - Use daemon mode to renew secrets in the background.
 
-| **Supported Providers**                                      | **Status**     |
-|--------------------------------------------------------------|----------------|
-|  Local provider                                              | ✅ Implemented  |
-| [HashiCorp Vault](https://www.vaultproject.io)               | ✅ Implemented  |
-| [OpenBao](https://github.com/openbao/openbao)                | ✅ Implemented  |
-| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)| ✅ Implemented  |
+| **Supported Providers**                                                | **Status**     |
+|------------------------------------------------------------------------|----------------|
+|  Local provider                                                        | ✅ Implemented  |
+| [HashiCorp Vault](https://www.vaultproject.io)                         | ✅ Implemented  |
+| [OpenBao](https://github.com/openbao/openbao)                          | ✅ Implemented  |
+| [AWS Secrets Manager](https://aws.amazon.com/secrets-manager)          | ✅ Implemented  |
+| [Google Cloud Secret Manager](https://cloud.google.com/secret-manager) | ✅ Implemented  |
 
 ## Getting started
 

@@ -21,6 +21,7 @@ import (
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
+
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 

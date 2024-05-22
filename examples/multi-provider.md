@@ -61,7 +61,7 @@ export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
 
 ```bash
 # Build the secret-init binary
-go build
+make build
 
 # Use in daemon mode
 export SECRET_INIT_DAEMON="true"
