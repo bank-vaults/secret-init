@@ -16,12 +16,19 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractEntrypoint(t *testing.T) {
+	// Find the path of the env binary
+	envPath, err := exec.LookPath("env")
+	if err != nil {
+		t.Fatalf("failed to find path of env binary: %v", err)
+	}
+
 	tests := []struct {
 		name               string
 		args               []string
@@ -32,13 +39,13 @@ func TestExtractEntrypoint(t *testing.T) {
 		{
 			name:               "Valid case with one argument",
 			args:               []string{"secret-init", "env"},
-			expectedBinaryPath: "/usr/bin/env",
+			expectedBinaryPath: envPath,
 			expectedBinaryArgs: []string{},
 		},
 		{
 			name:               "Valid case with more than two arguments",
 			args:               []string{"secret-init", "env", "|", "grep", "secrets"},
-			expectedBinaryPath: "/usr/bin/env",
+			expectedBinaryPath: envPath,
 			expectedBinaryArgs: []string{"|", "grep", "secrets"},
 		},
 		{

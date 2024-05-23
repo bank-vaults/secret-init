@@ -1,5 +1,9 @@
 # Bao-provider
 
+## Overview
+
+The Bao provider in Secret-Init can load secrets from Open-Bao. This provider interfaces with Vault's API via Bank-Vaults's Vault-SDK, to fetch and load secrets.
+
 ## Prerequisites
 
 - Golang `>= 1.21`
@@ -47,7 +51,7 @@ export RABBITMQ_PASSWORD="bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD"
 
 ```bash
 # Build the secret-init binary
-go build
+make build
 
 # Use in daemon mode
 export SECRET_INIT_DAEMON="true"

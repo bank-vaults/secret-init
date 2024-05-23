@@ -1,5 +1,9 @@
 # File-provider
 
+## Overview
+
+The File provider in Secret-Init can load secrets from local files.
+
 ## Prerequisites
 
 - Golang `>= 1.21`
@@ -34,7 +38,7 @@ export FILE_SECRET_2=file:$PWD/example/super-secret-value
 
 ```bash
 # Build the secret-init binary
-go build
+make build
 
 # Run secret-init with a command e.g.
 ./secret-init env | grep 'FILE_SECRET_1\|FILE_SECRET_2'

@@ -158,8 +158,8 @@ func parsePathsToMap(paths []string) map[string]string {
 
 	for _, path := range paths {
 		split := strings.SplitN(path, "=", 2)
-		key, value := split[0], split[1]
-		baoEnviron[key] = value
+		originalKey, value := split[0], split[1]
+		baoEnviron[originalKey] = value
 	}
 
 	return baoEnviron

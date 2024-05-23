@@ -1,5 +1,9 @@
 # Vault-provider
 
+## Overview
+
+The Vault provider in Secret-Init can load secrets from HashiCorp Vault. This provider interfaces with Vault's API via Bank-Vaults's Vault-SDK, to fetch and load secrets.
+
 ## Prerequisites
 
 - Golang `>= 1.21`
@@ -47,7 +51,7 @@ export AWS_ACCESS_KEY_ID=vault:secret/data/test/aws#AWS_ACCESS_KEY_ID
 
 ```bash
 # Build the secret-init binary
-go build
+make build
 
 # Use in daemon mode
 export SECRET_INIT_DAEMON="true"
