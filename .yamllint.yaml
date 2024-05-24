@@ -1,6 +1,10 @@
-ignore-from-file: [.gitignore]
+ignore: |
+  .gitignore
+  .github/
 
 extends: default
 
 rules:
   line-length: disable
+  document-start: disable
+  comments: disable
