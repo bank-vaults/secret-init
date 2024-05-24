@@ -23,7 +23,7 @@ This includes:
 - Authenticating with Azure using environment variables.
 - A service principal with a client secret.
 - A service principal with a certificate.
-- A managed identities for Azure resources, and interactive browser authentication.
+- A managed identities for Azure resources.
 
 ## Define secrets to inject
 
