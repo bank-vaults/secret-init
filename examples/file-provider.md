@@ -1,4 +1,4 @@
-# File-provider
+# File provider
 
 ## Overview
 

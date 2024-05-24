@@ -1,4 +1,4 @@
-# Multi-provider
+# Multi provider
 
 > This setup works with any combinations of providers, check out the [single provider use cases](README.md).
 
