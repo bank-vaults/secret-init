@@ -1,4 +1,4 @@
-# Google Cloud Provider
+# GCP provider
 
 ## Overview
 

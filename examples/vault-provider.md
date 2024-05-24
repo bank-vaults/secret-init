@@ -1,4 +1,4 @@
-# Vault-provider
+# Vault provider
 
 ## Overview
 

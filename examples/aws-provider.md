@@ -1,4 +1,4 @@
-# AWS-provider
+# AWS provider
 
 ## Overview
 

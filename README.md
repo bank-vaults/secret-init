@@ -18,6 +18,7 @@
 | [OpenBao](https://github.com/openbao/openbao)                                                                                                                           | 🟡 Beta              |
 | [AWS Secrets Manager](https://aws.amazon.com/secrets-manager) / [AWS Systems Manager Parameter Store](https://aws.amazon.com/systems-manager/features/#Parameter_Store) | ✅ Production Ready  |
 | [Google Cloud Secret Manager](https://cloud.google.com/secret-manager)                                                                                                  | ✅ Production Ready  |
+| [Azure Key Vault](https://azure.microsoft.com/services/key-vault)                                                                                                       | ✅ Production Ready  |
 
 ## Getting started
 

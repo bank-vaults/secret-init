@@ -1,4 +1,4 @@
-# Bao-provider
+# Bao provider
 
 ## Overview
 
