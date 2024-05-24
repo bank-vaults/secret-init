@@ -59,29 +59,27 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 		// valid google cloud secret manager secret examples:
 		// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}
 		// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}/versions/{VERSION|latest}
-		if strings.HasPrefix(secretID, "gcp:secretmanager:") {
-			secretID = strings.TrimPrefix(secretID, "gcp:secretmanager:")
+		secretID = strings.TrimPrefix(secretID, "gcp:secretmanager:")
 
-			// Check if the path has version specified
-			secretID, err := handleVersion(secretID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to handle secret ID version: %v", err)
-			}
-
-			secret, err := p.client.AccessSecretVersion(
-				ctx,
-				&secretmanagerpb.AccessSecretVersionRequest{
-					Name: secretID,
-				})
-			if err != nil {
-				return nil, fmt.Errorf("failed to access secret version from Google Cloud secret manager: %v", err)
-			}
-
-			secrets = append(secrets, provider.Secret{
-				Key:   originalKey,
-				Value: string(secret.Payload.GetData()),
-			})
+		// Check if the path has version specified
+		secretID, err := handleVersion(secretID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to handle secret ID version: %v", err)
 		}
+
+		secret, err := p.client.AccessSecretVersion(
+			ctx,
+			&secretmanagerpb.AccessSecretVersionRequest{
+				Name: secretID,
+			})
+		if err != nil {
+			return nil, fmt.Errorf("failed to access secret version from Google Cloud secret manager: %v", err)
+		}
+
+		secrets = append(secrets, provider.Secret{
+			Key:   originalKey,
+			Value: string(secret.Payload.GetData()),
+		})
 	}
 
 	return secrets, nil
