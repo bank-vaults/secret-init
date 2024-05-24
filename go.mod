@@ -23,9 +23,11 @@ require (
 	cloud.google.com/go/secretmanager v1.13.0
 	cloud.google.com/go/storage v1.39.1 // indirect
 	emperror.dev/errors v0.8.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.10.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.2
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect

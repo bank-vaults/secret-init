@@ -25,6 +25,7 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 	"github.com/bank-vaults/secret-init/pkg/provider/aws"
+	"github.com/bank-vaults/secret-init/pkg/provider/azure"
 	"github.com/bank-vaults/secret-init/pkg/provider/bao"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
 	"github.com/bank-vaults/secret-init/pkg/provider/gcp"
@@ -37,6 +38,7 @@ var supportedProviders = []string{
 	bao.ProviderName,
 	aws.ProviderName,
 	gcp.ProviderName,
+	azure.ProviderName,
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -83,6 +85,9 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 
 		case gcp.ProviderName:
 			secretReferences[gcp.ProviderName] = append(secretReferences[gcp.ProviderName], envSecretReference)
+
+		case azure.ProviderName:
+			secretReferences[azure.ProviderName] = append(secretReferences[azure.ProviderName], envSecretReference)
 		}
 	}
 
@@ -216,6 +221,13 @@ func getProviderPath(path string) (string, string) {
 		return gcp.ProviderName, path
 	}
 
+	// Example Azure Key Vault secret examples:
+	// azure:keyvault:{SECRET_NAME}
+	// azure:keyvault:{SECRET_NAME}/{VERSION}
+	if strings.HasPrefix(path, "azure:keyvault:") {
+		return azure.ProviderName, path
+	}
+
 	return "", path
 }
 
@@ -266,6 +278,17 @@ func newProvider(ctx context.Context, providerName string, appConfig *common.Con
 		provider, err := gcp.NewProvider(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create gcp provider: %w", err)
+		}
+		return provider, nil
+
+	case azure.ProviderName:
+		config, err := azure.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create azure config: %w", err)
+		}
+		provider, err := azure.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create azure provider: %w", err)
 		}
 		return provider, nil
 
