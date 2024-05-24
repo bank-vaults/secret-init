@@ -1,6 +1,4 @@
-ignore: |
-  .gitignore
-  .github/
+ignore-from-file: [.gitignore, .yamlignore]
 
 extends: default
 
