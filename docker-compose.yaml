@@ -20,3 +20,35 @@ services:
       BAO_ADDR: http://127.0.0.1:8200
       BAO_TOKEN: 227e1cce-6bf7-30bb-2d2a-acc854318caf
       BAO_DEV_ROOT_TOKEN_ID: 227e1cce-6bf7-30bb-2d2a-acc854318caf
+
+  bitwarden:
+    container_name: secret-init-bitwarden
+    image: bitwarden/self-host:beta
+    ports:
+      - 127.0.0.1:8400:8080
+    restart: always
+    depends_on:
+      - bitwarden-db
+    environment:
+      BW_ENABLE_ADMIN: "true"
+    env_file:
+      - settings.env
+    volumes:
+      - bitwarden:/etc/bitwarden
+      - logs:/var/log/bitwarden
+
+  bitwarden-db:
+    container_name: secret-init-bitwarden-db
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: "bank-vaults"
+      POSTGRES_PASSWORD: "dev"
+      POSTGRES_DB: "bitwarden_bank-vaults_db"
+    volumes:
+      - data:/var/lib/postgresql/data
+
+volumes:
+  bitwarden:
+  logs:
+  data:

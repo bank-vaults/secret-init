@@ -27,6 +27,7 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider/aws"
 	"github.com/bank-vaults/secret-init/pkg/provider/azure"
 	"github.com/bank-vaults/secret-init/pkg/provider/bao"
+	"github.com/bank-vaults/secret-init/pkg/provider/bitwarden"
 	"github.com/bank-vaults/secret-init/pkg/provider/file"
 	"github.com/bank-vaults/secret-init/pkg/provider/gcp"
 	"github.com/bank-vaults/secret-init/pkg/provider/vault"
@@ -39,6 +40,7 @@ var supportedProviders = []string{
 	aws.ProviderName,
 	gcp.ProviderName,
 	azure.ProviderName,
+	bitwarden.ProviderName,
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -88,6 +90,9 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 
 		case azure.ProviderName:
 			secretReferences[azure.ProviderName] = append(secretReferences[azure.ProviderName], envSecretReference)
+
+		case bitwarden.ProviderName:
+			secretReferences[bitwarden.ProviderName] = append(secretReferences[bitwarden.ProviderName], envSecretReference)
 		}
 	}
 
@@ -228,6 +233,15 @@ func getProviderPath(path string) (string, string) {
 		return azure.ProviderName, path
 	}
 
+	// Example Bitwarden secret examples:
+	// bw:{SECRET_ID}
+	// To retrieve all secrets in an organization:
+	// bw:{ORGANIZATION_ID}
+	// NOTE: (only works if BITWARDEN_ORGANIZATION_ID is also set to the same value)
+	if strings.HasPrefix(path, "bitwarden:") {
+		return bitwarden.ProviderName, path
+	}
+
 	return "", path
 }
 
@@ -289,6 +303,18 @@ func newProvider(ctx context.Context, providerName string, appConfig *common.Con
 		provider, err := azure.NewProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create azure provider: %w", err)
+		}
+		return provider, nil
+
+	case bitwarden.ProviderName:
+		config, err := bitwarden.LoadConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create bitwarden config: %w", err)
+		}
+
+		provider, err := bitwarden.NewProvider(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create bitwarden provider: %w", err)
 		}
 		return provider, nil
 
