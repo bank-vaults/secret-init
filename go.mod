@@ -3,7 +3,7 @@ module github.com/bank-vaults/secret-init
 go 1.22.3
 
 require (
-	github.com/aws/aws-sdk-go v1.54.2
+	github.com/aws/aws-sdk-go v1.54.6
 	github.com/bank-vaults/internal v0.3.1
 	github.com/bank-vaults/vault-sdk v0.9.4
 	github.com/hashicorp/vault/api v1.14.0
