@@ -150,25 +150,25 @@ func initLogger(config *common.Config) {
 	if config.JSONLog {
 		// Send logs with level higher than warning to stderr
 		router = router.Add(
-			slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+			slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}),
 			levelFilter(slog.LevelWarn, slog.LevelError),
 		)
 
 		// Send info and debug logs to stdout
 		router = router.Add(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}),
 			levelFilter(slog.LevelDebug, slog.LevelInfo),
 		)
 	} else {
 		// Send logs with level higher than warning to stderr
 		router = router.Add(
-			slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+			slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}),
 			levelFilter(slog.LevelWarn, slog.LevelError),
 		)
 
 		// Send info and debug logs to stdout
 		router = router.Add(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}),
 			levelFilter(slog.LevelDebug, slog.LevelInfo),
 		)
 	}
