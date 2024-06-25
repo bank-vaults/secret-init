@@ -32,6 +32,8 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/common"
 )
 
+var Version = "v0.2.0"
+
 func main() {
 	// Load application config
 	config, err := common.LoadConfig()
