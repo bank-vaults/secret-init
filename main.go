@@ -32,7 +32,7 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/common"
 )
 
-var Version = "v0.2.0"
+var Version = "dev"
 
 func main() {
 	// Load application config
