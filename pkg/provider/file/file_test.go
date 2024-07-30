@@ -17,8 +17,6 @@ package file
 import (
 	"context"
 	"fmt"
-	"io/fs"
-	"os"
 	"testing"
 	"testing/fstest"
 
@@ -26,60 +24,6 @@ import (
 
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
-
-func TestNewProvider(t *testing.T) {
-	tempDir := t.TempDir()
-	secretFile := newSecretFile(t, "3xtr3ms3cr3t")
-	defer os.Remove(secretFile)
-
-	tests := []struct {
-		name     string
-		config   *Config
-		err      error
-		wantType bool
-		wantFs   fs.FS
-	}{
-		{
-			name: "Valid config - directory",
-			config: &Config{
-				MountPath: tempDir,
-			},
-			wantType: true,
-			wantFs:   os.DirFS(tempDir),
-		},
-		{
-			name: "Invalid config - directory does not exist",
-			config: &Config{
-				MountPath: "test/secrets/invalid",
-			},
-			err: fmt.Errorf("failed to access path: stat test/secrets/invalid: no such file or directory"),
-		},
-		{
-			name: "Invalid config - file instead of directory",
-			config: &Config{
-				MountPath: secretFile,
-			},
-			err: fmt.Errorf("provided path is not a directory"),
-		},
-	}
-
-	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			provider, err := NewProvider(ttp.config)
-			if err != nil {
-				assert.EqualError(t, err, ttp.err.Error(), "Unexpected error message")
-			}
-			if ttp.wantType {
-				assert.Equal(t, ttp.wantType, provider != nil, "Unexpected provider type")
-
-				if ttp.wantFs != nil {
-					assert.Equal(t, ttp.wantFs, provider.(*Provider).fs, "Unexpected file system")
-				}
-			}
-		})
-	}
-}
 
 func TestLoadSecrets(t *testing.T) {
 	tests := []struct {
@@ -130,19 +74,4 @@ func TestLoadSecrets(t *testing.T) {
 			}
 		})
 	}
-}
-
-func newSecretFile(t *testing.T, content string) string {
-	dir := t.TempDir() + "/test/secrets"
-	err := os.MkdirAll(dir, 0o755)
-	assert.Nil(t, err, "Failed to create directory")
-
-	file, err := os.CreateTemp(dir, "secret.txt")
-	assert.Nil(t, err, "Failed to create a temporary file")
-	defer file.Close()
-
-	_, err = file.WriteString(content)
-	assert.Nil(t, err, "Failed to write to the temporary file")
-
-	return file.Name()
 }

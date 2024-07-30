@@ -21,16 +21,19 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-const ProviderName = "file"
+const referenceSelector = "file:"
 
 type Provider struct {
 	fs fs.FS
 }
 
-func NewProvider(config *Config) (provider.Provider, error) {
+func NewProvider(_ context.Context, _ *common.Config) (provider.Provider, error) {
+	config := LoadConfig()
+
 	// Check whether the path exists
 	fileInfo, err := os.Stat(config.MountPath)
 	if err != nil {
@@ -64,6 +67,10 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	}
 
 	return secrets, nil
+}
+
+func Valid(envValue string) bool {
+	return strings.HasPrefix(envValue, referenceSelector)
 }
 
 func (p *Provider) getSecretFromFile(valuePath string) (string, error) {

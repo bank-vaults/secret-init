@@ -103,6 +103,32 @@ func TestEnvStore_GetSecretReferences(t *testing.T) {
 			},
 		},
 		{
+			name: "gcp provider",
+			envs: map[string]string{
+				"GCP_SECRET1": "gcp:secretmanager:projects/my-project/secrets/my-secret/versions/1",
+				"GCP_SECRET2": "gcp:secretmanager:projects/my-project/secrets/my-secret/versions/latest",
+			},
+			wantPaths: map[string][]string{
+				"gcp": {
+					"GCP_SECRET1=gcp:secretmanager:projects/my-project/secrets/my-secret/versions/1",
+					"GCP_SECRET2=gcp:secretmanager:projects/my-project/secrets/my-secret/versions/latest",
+				},
+			},
+		},
+		{
+			name: "azure provider",
+			envs: map[string]string{
+				"AZURE_SECRET1": "azure:keyvault:my-keyvault/my-secret",
+				"AZURE_SECRET2": "azure:keyvault:my-keyvault/my-secret/latest",
+			},
+			wantPaths: map[string][]string{
+				"azure": {
+					"AZURE_SECRET1=azure:keyvault:my-keyvault/my-secret",
+					"AZURE_SECRET2=azure:keyvault:my-keyvault/my-secret/latest",
+				},
+			},
+		},
+		{
 			name: "multi provider",
 			envs: map[string]string{
 				"AWS_SECRET_ACCESS_KEY_ID": "file:secret/data/test/aws",
@@ -112,6 +138,10 @@ func TestEnvStore_GetSecretReferences(t *testing.T) {
 				"RABBITMQ_PASSWORD":        "bao:secret/data/test/rabbitmq#RABBITMQ_PASSWORD",
 				"AWS_SECRET1":              "arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
 				"AWS_SECRET2":              "arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+				"GCP_SECRET1":              "gcp:secretmanager:projects/my-project/secrets/my-secret/versions/1",
+				"GCP_SECRET2":              "gcp:secretmanager:projects/my-project/secrets/my-secret/versions/latest",
+				"AZURE_SECRET1":            "azure:keyvault:my-keyvault/my-secret",
+				"AZURE_SECRET2":            "azure:keyvault:my-keyvault/my-secret/latest",
 			},
 			wantPaths: map[string][]string{
 				"file": {
@@ -128,6 +158,14 @@ func TestEnvStore_GetSecretReferences(t *testing.T) {
 				"aws": {
 					"AWS_SECRET1=arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret",
 					"AWS_SECRET2=arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter",
+				},
+				"gcp": {
+					"GCP_SECRET1=gcp:secretmanager:projects/my-project/secrets/my-secret/versions/1",
+					"GCP_SECRET2=gcp:secretmanager:projects/my-project/secrets/my-secret/versions/latest",
+				},
+				"azure": {
+					"AZURE_SECRET1=azure:keyvault:my-keyvault/my-secret",
+					"AZURE_SECRET2=azure:keyvault:my-keyvault/my-secret/latest",
 				},
 			},
 		},
@@ -163,7 +201,6 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 		name                string
 		providerPaths       map[string][]string
 		wantProviderSecrets []provider.Secret
-		addvault            bool
 		err                 error
 	}{
 		{
@@ -179,7 +216,6 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 					Value: "secretId",
 				},
 			},
-			addvault: false,
 		},
 		{
 			name: "Fail to create provider",
@@ -188,15 +224,14 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 					"AWS_SECRET_ACCESS_KEY_ID=file:" + secretFile,
 				},
 			},
-			addvault: false,
-			err:      fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
+			err: fmt.Errorf("failed to create provider invalid: provider invalid is not supported"),
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(ttp.addvault, secretFile)
+			os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
 
 			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(context.Background(), ttp.providerPaths)
 			if err != nil {
@@ -217,7 +252,6 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		name            string
 		providerSecrets []provider.Secret
 		wantSecretsEnv  []string
-		addvault        bool
 		err             error
 	}{
 		{
@@ -231,28 +265,19 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 			wantSecretsEnv: []string{
 				"AWS_SECRET_ACCESS_KEY_ID=secretId",
 			},
-			addvault: false,
 		},
 	}
 
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			createEnvsForProvider(ttp.addvault, secretFile)
+			os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
 
 			secretsEnv := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
 			if ttp.wantSecretsEnv != nil {
 				assert.Equal(t, ttp.wantSecretsEnv, secretsEnv, "Unexpected secrets")
 			}
 		})
-	}
-}
-
-func createEnvsForProvider(addVault bool, secretFile string) {
-	os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
-	if addVault {
-		os.Setenv("MYSQL_PASSWORD", "vault:secret/data/test/mysql#MYSQL_PASSWORD")
-		os.Setenv("AWS_SECRET_ACCESS_KEY", "vault:secret/data/test/aws#AWS_SECRET_ACCESS_KEY")
 	}
 }
 
