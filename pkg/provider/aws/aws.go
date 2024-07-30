@@ -24,21 +24,36 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/ssm"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-var ProviderName = "aws"
+const (
+	providerName         = "aws"
+	referenceSelectorSM  = "arn:aws:secretsmanager:"
+	referenceSelectorSSM = "arn:aws:ssm:"
+)
 
 type Provider struct {
 	sm  *secretsmanager.SecretsManager
 	ssm *ssm.SSM
 }
 
-func NewProvider(config *Config) *Provider {
+func (p *Provider) NewProvider(_ context.Context, _ *common.Config) (provider.Provider, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vault config: %w", err)
+	}
+
 	return &Provider{
 		sm:  secretsmanager.New(config.session),
 		ssm: ssm.New(config.session),
-	}
+	}, nil
+}
+
+// GetName returns the name of the provider
+func (p *Provider) GetName() string {
+	return providerName
 }
 
 func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
@@ -99,6 +114,13 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	}
 
 	return secrets, nil
+}
+
+// Example AWS prefixes:
+// arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret
+// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
+func (p *Provider) Valid(envValue string) bool {
+	return strings.HasPrefix(envValue, referenceSelectorSM) || strings.HasPrefix(envValue, referenceSelectorSSM)
 }
 
 // AWS Secrets Manager can store secrets in two formats:

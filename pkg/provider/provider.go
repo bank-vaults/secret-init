@@ -14,11 +14,22 @@
 
 package provider
 
-import "context"
+import (
+	"context"
+
+	"github.com/bank-vaults/secret-init/pkg/common"
+)
 
 // Provider is an interface for securely loading secrets based on environment variables.
 type Provider interface {
+	// GetName returns the name of the provider
+	GetName() string
+	// NewProvider creates a new provider
+	NewProvider(ctx context.Context, appConfig *common.Config) (Provider, error)
+	// LoadSecrets loads secrets from the provider based on the given paths
 	LoadSecrets(ctx context.Context, paths []string) ([]Secret, error)
+	// Valid returns whether a env value can be handled by the provider
+	Valid(envValue string) bool
 }
 
 // Secret holds Provider-specific secret data.

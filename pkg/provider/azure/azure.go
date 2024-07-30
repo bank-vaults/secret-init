@@ -22,16 +22,25 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-var ProviderName = "azure"
+const (
+	providerName      = "azure"
+	referenceSelector = "azure:keyvault:"
+)
 
 type Provider struct {
 	client *azsecrets.Client
 }
 
-func NewProvider(config *Config) (*Provider, error) {
+func (p *Provider) NewProvider(_ context.Context, _ *common.Config) (provider.Provider, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vault config: %w", err)
+	}
+
 	creds, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default azure credentials: %v", err)
@@ -45,6 +54,11 @@ func NewProvider(config *Config) (*Provider, error) {
 	return &Provider{
 		client: client,
 	}, nil
+}
+
+// GetName returns the name of the provider
+func (p *Provider) GetName() string {
+	return providerName
 }
 
 func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
@@ -77,4 +91,11 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	}
 
 	return secrets, nil
+}
+
+// Example Azure Key Vault secret examples:
+// azure:keyvault:{SECRET_NAME}
+// azure:keyvault:{SECRET_NAME}/{VERSION}
+func (p *Provider) Valid(envValue string) bool {
+	return strings.HasPrefix(envValue, referenceSelector)
 }
