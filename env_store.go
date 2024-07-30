@@ -190,7 +190,6 @@ func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([
 // ConvertProviderSecrets converts the loaded secrets to environment variables
 func (s *EnvStore) ConvertProviderSecrets(providerSecrets []provider.Secret) []string {
 	var secretsEnv []string
-
 	for _, secret := range providerSecrets {
 		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 	}
