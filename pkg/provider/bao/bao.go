@@ -28,6 +28,7 @@ import (
 
 	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
+	"github.com/bank-vaults/secret-init/pkg/utils"
 )
 
 const (
@@ -129,6 +130,12 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 
 	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, slog.Default())
 	inject := func(key, value string) {
+		// Check deduplication
+		if utils.IsKeyDuplicated(&sanitized.secrets, key) {
+			slog.Warn(fmt.Sprintf("Deduplication detected for key: %s, overriding it", key))
+			utils.RemoveSecretByKey(&sanitized.secrets, key)
+		}
+
 		sanitized.append(key, value)
 	}
 
