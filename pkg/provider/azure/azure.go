@@ -56,6 +56,11 @@ func NewProvider(_ context.Context, _ *common.Config) (provider.Provider, error)
 	}, nil
 }
 
+// GetName returns the name of the provider
+func (p *Provider) GetName() string {
+	return providerName
+}
+
 func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
 	var secrets []provider.Secret
 

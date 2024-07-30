@@ -117,6 +117,11 @@ func NewProvider(_ context.Context, appConfig *common.Config) (provider.Provider
 	}, nil
 }
 
+// GetName returns the name of the provider
+func (p *Provider) GetName() string {
+	return providerName
+}
+
 // LoadSecret's path formatting: <key>=<path>
 // This formatting is necessary because the injector expects a map of key=value pairs.
 // It also returns a map of key:value pairs, where the key is the environment variable name
