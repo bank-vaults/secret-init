@@ -78,7 +78,7 @@ func TestConfig(t *testing.T) {
 			env: map[string]string{
 				TokenFileEnv: tokenFile + "/invalid",
 			},
-			err: fmt.Errorf("failed to read token file " + tokenFile + "/invalid: open " + tokenFile + "/invalid: not a directory"),
+			err: fmt.Errorf("failed to read token file %s/invalid: open %s/invalid: not a directory", tokenFile, tokenFile),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing role",

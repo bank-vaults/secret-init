@@ -2,13 +2,6 @@
 
 export PATH := $(abspath bin/):${PATH}
 
-# Dependency versions
-GOLANGCI_VERSION = 1.53.3
-LICENSEI_VERSION = 0.8.0
-COSIGN_VERSION = 2.2.2
-GORELEASER_VERSION = 2.0.0
-BATS_VERSION = 1.2.1
-
 ##@ General
 
 # Targets commented with ## will be visible in "make help" info.
@@ -24,10 +17,6 @@ help: ## Display this help
 .PHONY: up
 up: ## Start development environment
 	docker compose up -d
-
-.PHONY: stop
-stop: ## Stop development environment
-	docker compose stop
 
 .PHONY: down
 down: ## Destroy development environment
@@ -50,12 +39,28 @@ container-image: ## Build container image
 
 .PHONY: binary-snapshot
 binary-snapshot: ## Build binary snapshot
-	VERSION=v${GORELEASER_VERSION} goreleaser release --clean --skip=publish --snapshot
+	VERSION=v${GORELEASER_VERSION} $(GORELEASER_BIN) release --clean --skip=publish --snapshot
 
 ##@ Checks
 
 .PHONY: check
-check: test lint ## Run checks (tests and linters)
+check: lint test ## Run checks (tests and linters)
+
+.PHONY: lint
+lint: lint-go lint-docker lint-yaml
+lint: ## Run linters
+
+.PHONY: lint-go
+lint-go:
+	$(GOLANGCI_LINT_BIN) run $(if ${CI},--out-format colored-line-number,)
+
+.PHONY: lint-docker
+lint-docker:
+	$(HADOLINT_BIN) Dockerfile
+
+.PHONY: lint-yaml
+lint-yaml:
+	$(YAMLLINT_BIN) $(if ${CI},-f github,) --no-warnings .
 
 .PHONY: test
 test: ## Run tests
@@ -64,41 +69,52 @@ test: ## Run tests
 .PHONY: test-e2e
 test-e2e: ## Run e2e tests
 	@export BATS_LIB_PATH=${PWD}/bin/bats-core/libexec/bats-core/lib && \
-	bats e2e
-
-.PHONY: lint
-lint: lint-go lint-docker lint-yaml
-lint: ## Run linters
-
-.PHONY: lint-go
-lint-go:
-	golangci-lint run $(if ${CI},--out-format github-actions,)
-
-.PHONY: lint-docker
-lint-docker:
-	hadolint Dockerfile
-
-.PHONY: lint-yaml
-lint-yaml:
-	yamllint $(if ${CI},-f github,) --no-warnings .
+	$(BATS_BIN) e2e
 
 .PHONY: fmt
 fmt: ## Format code
-	golangci-lint run --fix
+	$(GOLANGCI_LINT_BIN) run --fix
 
 .PHONY: license-check
 license-check: ## Run license check
-	licensei check
-	licensei header
+	$(LICENSEI_BIN) check
+	$(LICENSEI_BIN) header
 
 ##@ Dependencies
+
+# Dependency versions
+GOLANGCI_LINT_VERSION = 1.60.2
+LICENSEI_VERSION = 0.9.0
+COSIGN_VERSION = 2.4.0
+GORELEASER_VERSION = 2.2.0
+BATS_VERSION = 1.11.0
+
+# Dependency binaries
+GOLANGCI_LINT_BIN := golangci-lint
+LICENSEI_BIN := licensei
+COSIGN_BIN := cosign
+GORELEASER_BIN := goreleaser
+BATS_BIN := bats
+
+# TODO: add support for hadolint and yamllint dependencies
+HADOLINT_BIN := hadolint
+YAMLLINT_BIN := yamllint
+
+# If we have "bin" dir, use those binaries instead
+ifneq ($(wildcard ./bin/.),)
+	GOLANGCI_LINT_BIN := bin/$(GOLANGCI_LINT_BIN)
+	LICENSEI_BIN := bin/$(LICENSEI_BIN)
+	COSIGN_BIN := bin/$(COSIGN_BIN)
+	GORELEASER_BIN := bin/$(GORELEASER_BIN)
+	BATS_BIN := bin/$(BATS_BIN)
+endif
 
 deps: bin/golangci-lint bin/licensei bin/cosign bin/goreleaser bin/bats
 deps: ## Install dependencies
 
 bin/golangci-lint:
 	@mkdir -p bin
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- v${GOLANGCI_VERSION}
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- v${GOLANGCI_LINT_VERSION}
 
 bin/licensei:
 	@mkdir -p bin
@@ -129,7 +145,7 @@ bin/goreleaser:
 bin/bats:
 	@mkdir -p bin/bats-core
 	@mkdir -p tmpbats
-	git clone https://github.com/bats-core/bats-core.git tmpbats
+	git clone --branch v${BATS_VERSION} --depth 1 https://github.com/bats-core/bats-core.git tmpbats
 	bash tmpbats/install.sh bin/bats-core
 	@ln -sF ${PWD}/bin/bats-core/bin/bats ${PWD}/bin
 	@rm -rf tmpbats

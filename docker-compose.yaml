@@ -1,7 +1,7 @@
 services:
   vault:
     container_name: secret-init-vault
-    image: hashicorp/vault:1.14.1
+    image: hashicorp/vault:1.14.8
     ports:
       - 127.0.0.1:8200:8200
     environment:
@@ -12,7 +12,7 @@ services:
 
   bao:
     container_name: secret-init-bao
-    image: quay.io/openbao/openbao@sha256:a015ae0adb1af5b45b33632e29879ff87063d0878e9359584a50b2706e500e9a # 2.0.0-alpha20240329
+    image: openbao/openbao:latest
     ports:
       - 127.0.0.1:8300:8200
     environment:

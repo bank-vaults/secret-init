@@ -1,4 +1,6 @@
 {
+  description = "Minimalistic init system for containers injecting secrets from various secret stores.";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -18,7 +20,7 @@
           default = {
             languages = {
               go.enable = true;
-              go.package = pkgs.go_1_21;
+              go.package = pkgs.go_1_23;
             };
 
             services = {
@@ -26,33 +28,22 @@
                 enable = true;
                 package = self'.packages.vault;
               };
-              # TODO: Add Bao once it's generally available
-              # bao = {
-              #   enable = true;
-              #   package = self'.packages.bao;
-              # };
             };
 
             pre-commit.hooks = {
               nixpkgs-fmt.enable = true;
               yamllint.enable = true;
-              # hadolint.enable = true;
+              hadolint.enable = true;
             };
 
             packages = with pkgs; [
               gnumake
 
-              # golangci-lint
-              (bats.withLibraries (p: [ p.bats-support p.bats-assert ]))
               goreleaser
 
-              # TODO: remove once https://github.com/NixOS/nixpkgs/pull/254878 hits unstable
-              (golangci-lint.override (prev: {
-                buildGoModule = pkgs.buildGo121Module;
-              }))
+              (bats.withLibraries (p: [ p.bats-support p.bats-assert ]))
 
-              kubectl
-
+              golangci-lint
               yamllint
               hadolint
             ] ++ [
@@ -60,13 +51,21 @@
             ];
 
             env = {
-              KUBECONFIG = "${config.devenv.shells.default.env.DEVENV_STATE}/kube/config";
-
               VAULT_ADDR = "http://127.0.0.1:8200";
               VAULT_TOKEN = "227e1cce-6bf7-30bb-2d2a-acc854318caf";
               BAO_ADDR = "http://127.0.0.1:8300";
               BAO_TOKEN = "227e1cce-6bf7-30bb-2d2a-acc854318caf";
             };
+
+            scripts = {
+              versions.exec = ''
+                go version
+                golangci-lint version
+              '';
+            };
+            enterShell = ''
+              versions
+            '';
 
             # https://github.com/cachix/devenv/issues/528#issuecomment-1556108767
             containers = pkgs.lib.mkForce { };
