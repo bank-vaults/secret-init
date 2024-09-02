@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	injector "github.com/bank-vaults/internal/pkg/injector/vault"
+	injector "github.com/bank-vaults/vault-sdk/injector/vault"
 	"github.com/bank-vaults/vault-sdk/vault"
 
 	"github.com/bank-vaults/secret-init/pkg/common"

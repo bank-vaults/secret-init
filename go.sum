@@ -89,8 +89,6 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.30.5 h1:OMsEmCyz2i89XwRwPouAJvhj81wI
 github.com/aws/aws-sdk-go-v2/service/sts v1.30.5/go.mod h1:vmSqFK+BVIwVpDAGZB3CoCXHzurt4qBE8lf+I/kRTh0=
 github.com/aws/smithy-go v1.20.4 h1:2HK1zBdPgRbjFOHlfeQZfpC4r72MOb9bZkiFwggKO+4=
 github.com/aws/smithy-go v1.20.4/go.mod h1:irrKGvNn1InZwb2d7fkIRNucdfwR8R+Ts3wxYa/cJHg=
-github.com/bank-vaults/internal v0.4.0 h1:jP1RsRWgX7Fe+smEPeKKmLoB0hLq0pLxUnhJqp4Rz4Q=
-github.com/bank-vaults/internal v0.4.0/go.mod h1:OR1sa2sfXiLPRvSD/hjbgZc3t3We3nlk91zH2U0C/MI=
 github.com/bank-vaults/vault-sdk v0.10.0 h1:eHROg9ZkltBJcr9Ww06MhXSAI0ZQUzYtXUzjAEqoyPg=
 github.com/bank-vaults/vault-sdk v0.10.0/go.mod h1:/MinW24eZ7c6Acyb0aYpT9wCpdbpfdBju4cpdpPqwMk=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=
