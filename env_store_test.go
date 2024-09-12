@@ -240,10 +240,7 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			createEnvsForProvider(ttp.addvault, secretFile)
 
-			secretsEnv, err := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
-			if err != nil {
-				assert.EqualError(t, ttp.err, err.Error(), "Unexpected error message")
-			}
+			secretsEnv := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
 			if ttp.wantSecretsEnv != nil {
 				assert.Equal(t, ttp.wantSecretsEnv, secretsEnv, "Unexpected secrets")
 			}
@@ -261,7 +258,7 @@ func createEnvsForProvider(addVault bool, secretFile string) {
 
 func newSecretFile(t *testing.T, content string) string {
 	dir := t.TempDir() + "/test/secrets"
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	assert.Nil(t, err, "Failed to create directory")
 
 	file, err := os.CreateTemp(dir, "secret.txt")

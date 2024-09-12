@@ -134,7 +134,7 @@ func TestLoadSecrets(t *testing.T) {
 
 func newSecretFile(t *testing.T, content string) string {
 	dir := t.TempDir() + "/test/secrets"
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	assert.Nil(t, err, "Failed to create directory")
 
 	file, err := os.CreateTemp(dir, "secret.txt")

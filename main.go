@@ -62,11 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	secretsEnv, err := envStore.ConvertProviderSecrets(providerSecrets)
-	if err != nil {
-		slog.Error(fmt.Errorf("failed to convert secrets to envs: %w", err).Error())
-		os.Exit(1)
-	}
+	secretsEnv := envStore.ConvertProviderSecrets(providerSecrets)
 
 	if config.Delay > 0 {
 		slog.Info(fmt.Sprintf("sleeping for %s...", config.Delay))

@@ -45,7 +45,6 @@ func TestNewProvider(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func createSession() *session.Session {
