@@ -26,7 +26,10 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-const referenceSelector = "azure:keyvault:"
+const (
+	ProviderType      = "azure"
+	referenceSelector = "azure:keyvault:"
+)
 
 type Provider struct {
 	client *azsecrets.Client

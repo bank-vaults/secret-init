@@ -25,7 +25,10 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-const referenceSelector = "file:"
+const (
+	ProviderType      = "file"
+	referenceSelector = "file:"
+)
 
 type Provider struct {
 	fs fs.FS

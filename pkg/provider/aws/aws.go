@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	ProviderType         = "aws"
 	referenceSelectorSM  = "arn:aws:secretsmanager:"
 	referenceSelectorSSM = "arn:aws:ssm:"
 )

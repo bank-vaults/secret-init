@@ -34,32 +34,32 @@ import (
 
 var factories = []provider.Factory{
 	{
-		ProviderType: provider.Type("file"),
+		ProviderType: file.ProviderType,
 		Validator:    file.Valid,
 		Create:       file.NewProvider,
 	},
 	{
-		ProviderType: provider.Type("vault"),
+		ProviderType: vault.ProviderType,
 		Validator:    vault.Valid,
 		Create:       vault.NewProvider,
 	},
 	{
-		ProviderType: provider.Type("bao"),
+		ProviderType: bao.ProviderType,
 		Validator:    bao.Valid,
 		Create:       bao.NewProvider,
 	},
 	{
-		ProviderType: provider.Type("aws"),
+		ProviderType: aws.ProviderType,
 		Validator:    aws.Valid,
 		Create:       aws.NewProvider,
 	},
 	{
-		ProviderType: provider.Type("gcp"),
+		ProviderType: gcp.ProviderType,
 		Validator:    gcp.Valid,
 		Create:       gcp.NewProvider,
 	},
 	{
-		ProviderType: provider.Type("azure"),
+		ProviderType: azure.ProviderType,
 		Validator:    azure.Valid,
 		Create:       azure.NewProvider,
 	},
@@ -93,7 +93,7 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 	for envKey, envPath := range s.data {
 		for _, factory := range factories {
 			if factory.Validator(envPath) {
-				secretReferences[string(factory.ProviderType)] = append(secretReferences[string(factory.ProviderType)], fmt.Sprintf("%s=%s", envKey, envPath))
+				secretReferences[factory.ProviderType] = append(secretReferences[factory.ProviderType], fmt.Sprintf("%s=%s", envKey, envPath))
 			}
 		}
 	}
@@ -108,14 +108,14 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 	var providerSecrets []provider.Secret
 	// Workaround for openBao
 	// Remove once openBao uses BAO_ADDR in their client, instead of VAULT_ADDR
-	if _, ok := providerPaths["vault"]; ok {
-		vaultSecrets, err := s.workaroundForBao(ctx, providerPaths["vault"])
+	if _, ok := providerPaths[vault.ProviderType]; ok {
+		vaultSecrets, err := s.workaroundForBao(ctx, providerPaths[vault.ProviderType])
 		if err != nil {
 			return nil, err
 		}
 
 		providerSecrets = append(providerSecrets, vaultSecrets...)
-		delete(providerPaths, "vault")
+		delete(providerPaths, vault.ProviderType)
 	}
 
 	// At most, we will have one error per provider
@@ -128,7 +128,7 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 			defer wg.Done()
 
 			for _, factory := range factories {
-				if string(factory.ProviderType) == providerName {
+				if factory.ProviderType == providerName {
 					provider, err := factory.Create(ctx, s.appConfig)
 					if err != nil {
 						errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
@@ -168,15 +168,15 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([]provider.Secret, error) {
 	var providerSecrets []provider.Secret
 	for _, factory := range factories {
-		if string(factory.ProviderType) == "vault" {
+		if factory.ProviderType == vault.ProviderType {
 			provider, err := factory.Create(ctx, s.appConfig)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create provider %s: %w", string(factory.ProviderType), err)
+				return nil, fmt.Errorf("failed to create provider %s: %w", factory.ProviderType, err)
 			}
 
 			secrets, err := provider.LoadSecrets(ctx, vaultPaths)
 			if err != nil {
-				return nil, fmt.Errorf("failed to load secrets for provider %s: %w", string(factory.ProviderType), err)
+				return nil, fmt.Errorf("failed to load secrets for provider %s: %w", factory.ProviderType, err)
 			}
 
 			providerSecrets = append(providerSecrets, secrets...)

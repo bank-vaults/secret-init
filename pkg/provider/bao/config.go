@@ -28,37 +28,37 @@ const (
 	// which was acquired during the bao client initialization.
 	baoLogin = "bao:login"
 
-	TokenEnv                = "BAO_TOKEN"
-	TokenFileEnv            = "BAO_TOKEN_FILE"
-	AddrEnv                 = "BAO_ADDR"
-	AgentAddrEnv            = "BAO_AGENT_ADDR"
-	CACertEnv               = "BAO_CACERT"
-	CAPathEnv               = "BAO_CAPATH"
-	ClientCertEnv           = "BAO_CLIENT_CERT"
-	ClientKeyEnv            = "BAO_CLIENT_KEY"
-	ClientTimeoutEnv        = "BAO_CLIENT_TIMEOUT"
-	SRVLookupEnv            = "BAO_SRV_LOOKUP"
-	SkipVerifyEnv           = "BAO_SKIP_VERIFY"
-	NamespaceEnv            = "BAO_NAMESPACE"
-	TLSServerNameEnv        = "BAO_TLS_SERVER_NAME"
-	WrapTTLEnv              = "BAO_WRAP_TTL"
-	MFAEnv                  = "BAO_MFA"
-	MaxRetriesEnv           = "BAO_MAX_RETRIES"
-	ClusterAddrEnv          = "BAO_CLUSTER_ADDR"
-	RedirectAddrEnv         = "BAO_REDIRECT_ADDR"
-	CLINoColorEnv           = "BAO_CLI_NO_COLOR"
-	RateLimitEnv            = "BAO_RATE_LIMIT"
-	RoleEnv                 = "BAO_ROLE"
-	PathEnv                 = "BAO_PATH"
-	AuthMethodEnv           = "BAO_AUTH_METHOD"
-	TransitKeyIDEnv         = "BAO_TRANSIT_KEY_ID"
-	TransitPathEnv          = "BAO_TRANSIT_PATH"
-	TransitBatchSizeEnv     = "BAO_TRANSIT_BATCH_SIZE"
-	IgnoreMissingSecretsEnv = "BAO_IGNORE_MISSING_SECRETS"
-	PassthroughEnv          = "BAO_PASSTHROUGH"
-	LogLevelEnv             = "BAO_LOG_LEVEL"
-	RevokeTokenEnv          = "BAO_REVOKE_TOKEN"
-	FromPathEnv             = "BAO_FROM_PATH"
+	tokenEnv                = "BAO_TOKEN"
+	tokenFileEnv            = "BAO_TOKEN_FILE"
+	addrEnv                 = "BAO_ADDR"
+	agentAddrEnv            = "BAO_AGENT_ADDR"
+	caCertEnv               = "BAO_CACERT"
+	caPathEnv               = "BAO_CAPATH"
+	clientCertEnv           = "BAO_CLIENT_CERT"
+	clientKeyEnv            = "BAO_CLIENT_KEY"
+	clientTimeoutEnv        = "BAO_CLIENT_TIMEOUT"
+	srvLookupEnv            = "BAO_SRV_LOOKUP"
+	skipVerifyEnv           = "BAO_SKIP_VERIFY"
+	namespaceEnv            = "BAO_NAMESPACE"
+	tlsServerNameEnv        = "BAO_TLS_SERVER_NAME"
+	wrapTTLEnv              = "BAO_WRAP_TTL"
+	mfaEnv                  = "BAO_MFA"
+	maxRetriesEnv           = "BAO_MAX_RETRIES"
+	clusterAddrEnv          = "BAO_CLUSTER_ADDR"
+	redirectAddrEnv         = "BAO_REDIRECT_ADDR"
+	cliNoColorEnv           = "BAO_CLI_NO_COLOR"
+	rateLimitEnv            = "BAO_RATE_LIMIT"
+	roleEnv                 = "BAO_ROLE"
+	pathEnv                 = "BAO_PATH"
+	authMethodEnv           = "BAO_AUTH_METHOD"
+	transitKeyIDEnv         = "BAO_TRANSIT_KEY_ID"
+	transitPathEnv          = "BAO_TRANSIT_PATH"
+	transitBatchSizeEnv     = "BAO_TRANSIT_BATCH_SIZE"
+	ignoreMissingSecretsEnv = "BAO_IGNORE_MISSING_SECRETS"
+	passthroughEnv          = "BAO_PASSTHROUGH"
+	logLevelEnv             = "BAO_LOG_LEVEL"
+	revokeTokenEnv          = "BAO_REVOKE_TOKEN"
+	fromPathEnv             = "BAO_FROM_PATH"
 )
 
 type Config struct {
@@ -81,36 +81,36 @@ type envType struct {
 }
 
 var sanitizeEnvmap = map[string]envType{
-	TokenEnv:                {login: true},
-	AddrEnv:                 {login: true},
-	AgentAddrEnv:            {login: true},
-	CACertEnv:               {login: true},
-	CAPathEnv:               {login: true},
-	ClientCertEnv:           {login: true},
-	ClientKeyEnv:            {login: true},
-	ClientTimeoutEnv:        {login: true},
-	SRVLookupEnv:            {login: true},
-	SkipVerifyEnv:           {login: true},
-	NamespaceEnv:            {login: true},
-	TLSServerNameEnv:        {login: true},
-	WrapTTLEnv:              {login: true},
-	MFAEnv:                  {login: true},
-	MaxRetriesEnv:           {login: true},
-	ClusterAddrEnv:          {login: false},
-	RedirectAddrEnv:         {login: false},
-	CLINoColorEnv:           {login: false},
-	RateLimitEnv:            {login: false},
-	RoleEnv:                 {login: false},
-	PathEnv:                 {login: false},
-	AuthMethodEnv:           {login: false},
-	TransitKeyIDEnv:         {login: false},
-	TransitPathEnv:          {login: false},
-	TransitBatchSizeEnv:     {login: false},
-	IgnoreMissingSecretsEnv: {login: false},
-	PassthroughEnv:          {login: false},
-	LogLevelEnv:             {login: false},
-	RevokeTokenEnv:          {login: false},
-	FromPathEnv:             {login: false},
+	tokenEnv:                {login: true},
+	addrEnv:                 {login: true},
+	agentAddrEnv:            {login: true},
+	caCertEnv:               {login: true},
+	caPathEnv:               {login: true},
+	clientCertEnv:           {login: true},
+	clientKeyEnv:            {login: true},
+	clientTimeoutEnv:        {login: true},
+	srvLookupEnv:            {login: true},
+	skipVerifyEnv:           {login: true},
+	namespaceEnv:            {login: true},
+	tlsServerNameEnv:        {login: true},
+	wrapTTLEnv:              {login: true},
+	mfaEnv:                  {login: true},
+	maxRetriesEnv:           {login: true},
+	clusterAddrEnv:          {login: false},
+	redirectAddrEnv:         {login: false},
+	cliNoColorEnv:           {login: false},
+	rateLimitEnv:            {login: false},
+	roleEnv:                 {login: false},
+	pathEnv:                 {login: false},
+	authMethodEnv:           {login: false},
+	transitKeyIDEnv:         {login: false},
+	transitPathEnv:          {login: false},
+	transitBatchSizeEnv:     {login: false},
+	ignoreMissingSecretsEnv: {login: false},
+	passthroughEnv:          {login: false},
+	logLevelEnv:             {login: false},
+	revokeTokenEnv:          {login: false},
+	fromPathEnv:             {login: false},
 }
 
 func LoadConfig() (*Config, error) {
@@ -122,15 +122,15 @@ func LoadConfig() (*Config, error) {
 	// This workaround is necessary because the BAO_ADDR
 	// is not yet used directly by the Bao client.
 	// This is why env_store.go/workaroundForBao() has been implemented.
-	baoAddr := os.Getenv(AddrEnv)
+	baoAddr := os.Getenv(addrEnv)
 	os.Setenv("VAULT_ADDR", baoAddr)
 
 	// The login procedure takes the token from a file (if using Bao Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
 	// so if we got a BAO_TOKEN for the special value with "bao:login"
-	baoToken := os.Getenv(TokenEnv)
+	baoToken := os.Getenv(tokenEnv)
 	isLogin := baoToken == baoLogin
-	tokenFile, ok := os.LookupEnv(TokenFileEnv)
+	tokenFile, ok := os.LookupEnv(tokenFileEnv)
 	if ok {
 		// load token from bao-agent .bao-token or injected webhook
 		tokenFileContent, err := os.ReadFile(tokenFile)
@@ -140,28 +140,28 @@ func LoadConfig() (*Config, error) {
 		baoToken = string(tokenFileContent)
 	} else {
 		if isLogin {
-			_ = os.Unsetenv(TokenEnv)
+			_ = os.Unsetenv(tokenEnv)
 		}
 
 		// will use role/path based authentication
-		role, hasRole = os.LookupEnv(RoleEnv)
+		role, hasRole = os.LookupEnv(roleEnv)
 		if !hasRole {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", RoleEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", roleEnv)
 		}
-		authPath, hasPath = os.LookupEnv(PathEnv)
+		authPath, hasPath = os.LookupEnv(pathEnv)
 		if !hasPath {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", PathEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", pathEnv)
 		}
-		authMethod, hasAuthMethod = os.LookupEnv(AuthMethodEnv)
+		authMethod, hasAuthMethod = os.LookupEnv(authMethodEnv)
 		if !hasAuthMethod {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", AuthMethodEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", authMethodEnv)
 		}
 	}
 
-	passthroughEnvVars := strings.Split(os.Getenv(PassthroughEnv), ",")
+	passthroughEnvVars := strings.Split(os.Getenv(passthroughEnv), ",")
 	if isLogin {
-		_ = os.Setenv(TokenEnv, baoLogin)
-		passthroughEnvVars = append(passthroughEnvVars, TokenEnv)
+		_ = os.Setenv(tokenEnv, baoLogin)
+		passthroughEnvVars = append(passthroughEnvVars, tokenEnv)
 	}
 
 	// do not sanitize env vars specified in BAO_PASSTHROUGH
@@ -178,11 +178,11 @@ func LoadConfig() (*Config, error) {
 		Role:                 role,
 		AuthPath:             authPath,
 		AuthMethod:           authMethod,
-		TransitKeyID:         os.Getenv(TransitKeyIDEnv),
-		TransitPath:          os.Getenv(TransitPathEnv),
-		TransitBatchSize:     cast.ToInt(os.Getenv(TransitBatchSizeEnv)),
-		IgnoreMissingSecrets: cast.ToBool(os.Getenv(IgnoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
-		FromPath:             os.Getenv(FromPathEnv),
-		RevokeToken:          cast.ToBool(os.Getenv(RevokeTokenEnv)),
+		TransitKeyID:         os.Getenv(transitKeyIDEnv),
+		TransitPath:          os.Getenv(transitPathEnv),
+		TransitBatchSize:     cast.ToInt(os.Getenv(transitBatchSizeEnv)),
+		IgnoreMissingSecrets: cast.ToBool(os.Getenv(ignoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
+		FromPath:             os.Getenv(fromPathEnv),
+		RevokeToken:          cast.ToBool(os.Getenv(revokeTokenEnv)),
 	}, nil
 }

@@ -28,6 +28,7 @@ import (
 )
 
 const (
+	ProviderType      = "gcp"
 	referenceSelector = "gcp:secretmanager:"
 	versionRegex      = `.*/versions/(latest|\d+)$`
 )

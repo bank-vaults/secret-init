@@ -30,7 +30,10 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-var referenceSelector = `(vault:)(.*)#(.*)`
+const (
+	ProviderType      = "vault"
+	referenceSelector = `(vault:)(.*)#(.*)`
+)
 
 type Provider struct {
 	isLogin        bool

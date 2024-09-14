@@ -20,14 +20,10 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/common"
 )
 
-type Type string
-type Validator func(envValue string) bool
-type FactoryCreate func(ctx context.Context, cfg *common.Config) (Provider, error)
-
 type Factory struct {
-	ProviderType Type
-	Validator    Validator
-	Create       FactoryCreate
+	ProviderType string
+	Validator    func(envValue string) bool
+	Create       func(ctx context.Context, cfg *common.Config) (Provider, error)
 }
 
 // Provider is an interface for securely loading secrets based on environment variables.
