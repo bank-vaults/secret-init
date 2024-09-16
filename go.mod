@@ -3,7 +3,7 @@ module github.com/bank-vaults/secret-init
 go 1.23.0
 
 require (
-	cloud.google.com/go/secretmanager v1.14.0
+	cloud.google.com/go/secretmanager v1.14.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.1.0
 	github.com/aws/aws-sdk-go v1.55.5
@@ -17,7 +17,7 @@ require (
 
 require (
 	cloud.google.com/go v0.115.1 // indirect
-	cloud.google.com/go/auth v0.9.2 // indirect
+	cloud.google.com/go/auth v0.9.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.4 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/iam v1.2.0 // indirect
@@ -117,10 +117,10 @@ require (
 	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
-	google.golang.org/api v0.195.0 // indirect
-	google.golang.org/genproto v0.0.0-20240827150818-7e3bb234dfed // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
+	google.golang.org/api v0.196.0 // indirect
+	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.66.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
