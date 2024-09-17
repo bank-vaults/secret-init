@@ -97,6 +97,7 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 			}
 		}
 	}
+	checkFromPath(s.data, &secretReferences)
 
 	return secretReferences
 }
@@ -190,10 +191,30 @@ func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([
 // ConvertProviderSecrets converts the loaded secrets to environment variables
 func (s *EnvStore) ConvertProviderSecrets(providerSecrets []provider.Secret) []string {
 	var secretsEnv []string
-
 	for _, secret := range providerSecrets {
 		secretsEnv = append(secretsEnv, fmt.Sprintf("%s=%s", secret.Key, secret.Value))
 	}
 
 	return secretsEnv
+}
+
+// Handle the edge case where *_FROM_PATH is defined but no direct env-var references are present
+// in this case the provider should be created with an empty list of secret references
+// leaving the secret injection to the provider
+func checkFromPath(environ map[string]string, secretReferences *map[string][]string) {
+	if environ == nil || secretReferences == nil {
+		return
+	}
+
+	if _, ok := (*secretReferences)[vault.ProviderType]; !ok {
+		if _, ok := environ[vault.FromPathEnv]; ok {
+			(*secretReferences)[vault.ProviderType] = []string{}
+		}
+	}
+
+	if _, ok := (*secretReferences)[bao.ProviderType]; !ok {
+		if _, ok := environ[bao.FromPathEnv]; ok {
+			(*secretReferences)[bao.ProviderType] = []string{}
+		}
+	}
 }

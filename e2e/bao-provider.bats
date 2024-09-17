@@ -157,7 +157,7 @@ assert_output_contains() {
 
   run_output=$(./secret-init env | grep 'API_KEY\|RABBITMQ_USERNAME\|RABBITMQ_PASSWORD')
   assert_success
-  
+
   # Get the lease ID after renewing the secret
   secret_info_after=$(docker exec "$bao_container_name" bao read -format=json database/creds/my-role)
   lease_id_after=$(echo "$secret_info_after" | jq -r '.lease_id')
@@ -173,12 +173,13 @@ assert_output_contains() {
 }
 
 @test "secrets successfully loaded from bao using BAO_FROM_PATH" {
+  setup_bao_provider
+
   # unset env vars to ensure secret-init will utilize BAO_FROM_PATH
   unset API_KEY
   unset RABBITMQ_USERNAME
   unset RABBITMQ_PASSWORD
 
-  setup_bao_provider
   set_bao_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_bao
   export BAO_FROM_PATH="secret/data/test/api,secret/data/test/rabbitmq"
