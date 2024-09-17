@@ -23,16 +23,21 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 
+	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-var ProviderName = "gcp"
+const (
+	ProviderType      = "gcp"
+	referenceSelector = "gcp:secretmanager:"
+	versionRegex      = `.*/versions/(latest|\d+)$`
+)
 
 type Provider struct {
 	client *secretmanager.Client
 }
 
-func NewProvider(ctx context.Context) (*Provider, error) {
+func NewProvider(ctx context.Context, _ *common.Config) (provider.Provider, error) {
 	// This will automatically use the Application Default Credentials (ADC) strategy for authentication.
 	// If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set,
 	// the client will use the service account key JSON file that the variable points to.
@@ -85,9 +90,16 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	return secrets, nil
 }
 
+// Example GCP prefixes:
+// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}
+// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}/versions/{VERSION|latest}
+func Valid(envValue string) bool {
+	return strings.HasPrefix(envValue, referenceSelector)
+}
+
 func handleVersion(secretID string) (string, error) {
 	// If the version is correctly specified, return the secretID as is
-	match, err := regexp.MatchString(`.*/versions/(latest|\d+)$`, secretID)
+	match, err := regexp.MatchString(versionRegex, secretID)
 	if err != nil {
 		return "", fmt.Errorf("failed to match secret ID with regex: %v", err)
 	}

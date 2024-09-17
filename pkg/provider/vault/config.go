@@ -28,37 +28,37 @@ const (
 	// which was acquired during the vault client initialization.
 	vaultLogin = "vault:login"
 
-	TokenEnv                = "VAULT_TOKEN"
-	TokenFileEnv            = "VAULT_TOKEN_FILE"
-	AddrEnv                 = "VAULT_ADDR"
-	AgentAddrEnv            = "VAULT_AGENT_ADDR"
-	CACertEnv               = "VAULT_CACERT"
-	CAPathEnv               = "VAULT_CAPATH"
-	ClientCertEnv           = "VAULT_CLIENT_CERT"
-	ClientKeyEnv            = "VAULT_CLIENT_KEY"
-	ClientTimeoutEnv        = "VAULT_CLIENT_TIMEOUT"
-	SRVLookupEnv            = "VAULT_SRV_LOOKUP"
-	SkipVerifyEnv           = "VAULT_SKIP_VERIFY"
-	NamespaceEnv            = "VAULT_NAMESPACE"
-	TLSServerNameEnv        = "VAULT_TLS_SERVER_NAME"
-	WrapTTLEnv              = "VAULT_WRAP_TTL"
-	MFAEnv                  = "VAULT_MFA"
-	MaxRetriesEnv           = "VAULT_MAX_RETRIES"
-	ClusterAddrEnv          = "VAULT_CLUSTER_ADDR"
-	RedirectAddrEnv         = "VAULT_REDIRECT_ADDR"
-	CLINoColorEnv           = "VAULT_CLI_NO_COLOR"
-	RateLimitEnv            = "VAULT_RATE_LIMIT"
-	RoleEnv                 = "VAULT_ROLE"
-	PathEnv                 = "VAULT_PATH"
-	AuthMethodEnv           = "VAULT_AUTH_METHOD"
-	TransitKeyIDEnv         = "VAULT_TRANSIT_KEY_ID"
-	TransitPathEnv          = "VAULT_TRANSIT_PATH"
-	TransitBatchSizeEnv     = "VAULT_TRANSIT_BATCH_SIZE"
-	IgnoreMissingSecretsEnv = "VAULT_IGNORE_MISSING_SECRETS"
-	PassthroughEnv          = "VAULT_PASSTHROUGH"
-	LogLevelEnv             = "VAULT_LOG_LEVEL"
-	RevokeTokenEnv          = "VAULT_REVOKE_TOKEN"
-	FromPathEnv             = "VAULT_FROM_PATH"
+	tokenEnv                = "VAULT_TOKEN"
+	tokenFileEnv            = "VAULT_TOKEN_FILE"
+	addrEnv                 = "VAULT_ADDR"
+	agentAddrEnv            = "VAULT_AGENT_ADDR"
+	caCertEnv               = "VAULT_CACERT"
+	caPathEnv               = "VAULT_CAPATH"
+	clientCertEnv           = "VAULT_CLIENT_CERT"
+	clientKeyEnv            = "VAULT_CLIENT_KEY"
+	clientTimeoutEnv        = "VAULT_CLIENT_TIMEOUT"
+	srvLookupEnv            = "VAULT_SRV_LOOKUP"
+	skipVerifyEnv           = "VAULT_SKIP_VERIFY"
+	namespaceEnv            = "VAULT_NAMESPACE"
+	tlsServerNameEnv        = "VAULT_TLS_SERVER_NAME"
+	wrapTTLEnv              = "VAULT_WRAP_TTL"
+	mfaEnv                  = "VAULT_MFA"
+	maxRetriesEnv           = "VAULT_MAX_RETRIES"
+	clusterAddrEnv          = "VAULT_CLUSTER_ADDR"
+	redirectAddrEnv         = "VAULT_REDIRECT_ADDR"
+	cliNoColorEnv           = "VAULT_CLI_NO_COLOR"
+	rateLimitEnv            = "VAULT_RATE_LIMIT"
+	roleEnv                 = "VAULT_ROLE"
+	pathEnv                 = "VAULT_PATH"
+	authMethodEnv           = "VAULT_AUTH_METHOD"
+	transitKeyIDEnv         = "VAULT_TRANSIT_KEY_ID"
+	transitPathEnv          = "VAULT_TRANSIT_PATH"
+	transitBatchSizeEnv     = "VAULT_TRANSIT_BATCH_SIZE"
+	ignoreMissingSecretsEnv = "VAULT_IGNORE_MISSING_SECRETS"
+	passthroughEnv          = "VAULT_PASSTHROUGH"
+	logLevelEnv             = "VAULT_LOG_LEVEL"
+	revokeTokenEnv          = "VAULT_REVOKE_TOKEN"
+	fromPathEnv             = "VAULT_FROM_PATH"
 )
 
 type Config struct {
@@ -81,36 +81,36 @@ type envType struct {
 }
 
 var sanitizeEnvmap = map[string]envType{
-	TokenEnv:                {login: true},
-	AddrEnv:                 {login: true},
-	AgentAddrEnv:            {login: true},
-	CACertEnv:               {login: true},
-	CAPathEnv:               {login: true},
-	ClientCertEnv:           {login: true},
-	ClientKeyEnv:            {login: true},
-	ClientTimeoutEnv:        {login: true},
-	SRVLookupEnv:            {login: true},
-	SkipVerifyEnv:           {login: true},
-	NamespaceEnv:            {login: true},
-	TLSServerNameEnv:        {login: true},
-	WrapTTLEnv:              {login: true},
-	MFAEnv:                  {login: true},
-	MaxRetriesEnv:           {login: true},
-	ClusterAddrEnv:          {login: false},
-	RedirectAddrEnv:         {login: false},
-	CLINoColorEnv:           {login: false},
-	RateLimitEnv:            {login: false},
-	RoleEnv:                 {login: false},
-	PathEnv:                 {login: false},
-	AuthMethodEnv:           {login: false},
-	TransitKeyIDEnv:         {login: false},
-	TransitPathEnv:          {login: false},
-	TransitBatchSizeEnv:     {login: false},
-	IgnoreMissingSecretsEnv: {login: false},
-	PassthroughEnv:          {login: false},
-	LogLevelEnv:             {login: false},
-	RevokeTokenEnv:          {login: false},
-	FromPathEnv:             {login: false},
+	tokenEnv:                {login: true},
+	addrEnv:                 {login: true},
+	agentAddrEnv:            {login: true},
+	caCertEnv:               {login: true},
+	caPathEnv:               {login: true},
+	clientCertEnv:           {login: true},
+	clientKeyEnv:            {login: true},
+	clientTimeoutEnv:        {login: true},
+	srvLookupEnv:            {login: true},
+	skipVerifyEnv:           {login: true},
+	namespaceEnv:            {login: true},
+	tlsServerNameEnv:        {login: true},
+	wrapTTLEnv:              {login: true},
+	mfaEnv:                  {login: true},
+	maxRetriesEnv:           {login: true},
+	clusterAddrEnv:          {login: false},
+	redirectAddrEnv:         {login: false},
+	cliNoColorEnv:           {login: false},
+	rateLimitEnv:            {login: false},
+	roleEnv:                 {login: false},
+	pathEnv:                 {login: false},
+	authMethodEnv:           {login: false},
+	transitKeyIDEnv:         {login: false},
+	transitPathEnv:          {login: false},
+	transitBatchSizeEnv:     {login: false},
+	ignoreMissingSecretsEnv: {login: false},
+	passthroughEnv:          {login: false},
+	logLevelEnv:             {login: false},
+	revokeTokenEnv:          {login: false},
+	fromPathEnv:             {login: false},
 }
 
 func LoadConfig() (*Config, error) {
@@ -122,9 +122,9 @@ func LoadConfig() (*Config, error) {
 	// The login procedure takes the token from a file (if using Vault Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
 	// so if we got a VAULT_TOKEN for the special value with "vault:login"
-	vaultToken := os.Getenv(TokenEnv)
+	vaultToken := os.Getenv(tokenEnv)
 	isLogin := vaultToken == vaultLogin
-	tokenFile, ok := os.LookupEnv(TokenFileEnv)
+	tokenFile, ok := os.LookupEnv(tokenFileEnv)
 	if ok {
 		// load token from vault-agent .vault-token or injected webhook
 		tokenFileContent, err := os.ReadFile(tokenFile)
@@ -134,28 +134,28 @@ func LoadConfig() (*Config, error) {
 		vaultToken = string(tokenFileContent)
 	} else {
 		if isLogin {
-			_ = os.Unsetenv(TokenEnv)
+			_ = os.Unsetenv(tokenEnv)
 		}
 
 		// will use role/path based authentication
-		role, hasRole = os.LookupEnv(RoleEnv)
+		role, hasRole = os.LookupEnv(roleEnv)
 		if !hasRole {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", RoleEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", roleEnv)
 		}
-		authPath, hasPath = os.LookupEnv(PathEnv)
+		authPath, hasPath = os.LookupEnv(pathEnv)
 		if !hasPath {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", PathEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", pathEnv)
 		}
-		authMethod, hasAuthMethod = os.LookupEnv(AuthMethodEnv)
+		authMethod, hasAuthMethod = os.LookupEnv(authMethodEnv)
 		if !hasAuthMethod {
-			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", AuthMethodEnv)
+			return nil, fmt.Errorf("incomplete authentication configuration: %s missing", authMethodEnv)
 		}
 	}
 
-	passthroughEnvVars := strings.Split(os.Getenv(PassthroughEnv), ",")
+	passthroughEnvVars := strings.Split(os.Getenv(passthroughEnv), ",")
 	if isLogin {
-		_ = os.Setenv(TokenEnv, vaultLogin)
-		passthroughEnvVars = append(passthroughEnvVars, TokenEnv)
+		_ = os.Setenv(tokenEnv, vaultLogin)
+		passthroughEnvVars = append(passthroughEnvVars, tokenEnv)
 	}
 
 	// do not sanitize env vars specified in VAULT_PASSTHROUGH
@@ -172,11 +172,11 @@ func LoadConfig() (*Config, error) {
 		Role:                 role,
 		AuthPath:             authPath,
 		AuthMethod:           authMethod,
-		TransitKeyID:         os.Getenv(TransitKeyIDEnv),
-		TransitPath:          os.Getenv(TransitPathEnv),
-		TransitBatchSize:     cast.ToInt(os.Getenv(TransitBatchSizeEnv)),
-		IgnoreMissingSecrets: cast.ToBool(os.Getenv(IgnoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
-		FromPath:             os.Getenv(FromPathEnv),
-		RevokeToken:          cast.ToBool(os.Getenv(RevokeTokenEnv)),
+		TransitKeyID:         os.Getenv(transitKeyIDEnv),
+		TransitPath:          os.Getenv(transitPathEnv),
+		TransitBatchSize:     cast.ToInt(os.Getenv(transitBatchSizeEnv)),
+		IgnoreMissingSecrets: cast.ToBool(os.Getenv(ignoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
+		FromPath:             os.Getenv(fromPathEnv),
+		RevokeToken:          cast.ToBool(os.Getenv(revokeTokenEnv)),
 	}, nil
 }

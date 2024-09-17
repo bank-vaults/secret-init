@@ -35,15 +35,15 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
-				TokenEnv:                vaultLogin,
-				TokenFileEnv:            tokenFile,
-				PassthroughEnv:          AgentAddrEnv + ", " + CLINoColorEnv,
-				TransitKeyIDEnv:         "test-key",
-				TransitPathEnv:          "transit",
-				TransitBatchSizeEnv:     "10",
-				IgnoreMissingSecretsEnv: "true",
-				RevokeTokenEnv:          "true",
-				FromPathEnv:             "secret/data/test",
+				tokenEnv:                vaultLogin,
+				tokenFileEnv:            tokenFile,
+				passthroughEnv:          agentAddrEnv + ", " + cliNoColorEnv,
+				transitKeyIDEnv:         "test-key",
+				transitPathEnv:          "transit",
+				transitBatchSizeEnv:     "10",
+				ignoreMissingSecretsEnv: "true",
+				revokeTokenEnv:          "true",
+				fromPathEnv:             "secret/data/test",
 			},
 			wantConfig: &Config{
 				IsLogin:              true,
@@ -60,10 +60,10 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Role and Path",
 			env: map[string]string{
-				TokenEnv:      vaultLogin,
-				RoleEnv:       "test-app-role",
-				PathEnv:       "auth/approle/test/login",
-				AuthMethodEnv: "test-approle",
+				tokenEnv:      vaultLogin,
+				roleEnv:       "test-app-role",
+				pathEnv:       "auth/approle/test/login",
+				authMethodEnv: "test-approle",
 			},
 			wantConfig: &Config{
 				IsLogin:    true,
@@ -76,31 +76,31 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Invalid login configuration using tokenfile - missing token file",
 			env: map[string]string{
-				TokenFileEnv: tokenFile + "/invalid",
+				tokenFileEnv: tokenFile + "/invalid",
 			},
 			err: fmt.Errorf("failed to read token file %s/invalid: open %s/invalid: not a directory", tokenFile, tokenFile),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing role",
 			env: map[string]string{
-				PathEnv:       "auth/approle/test/login",
-				AuthMethodEnv: "k8s",
+				pathEnv:       "auth/approle/test/login",
+				authMethodEnv: "k8s",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_ROLE missing"),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing path",
 			env: map[string]string{
-				RoleEnv:       "test-app-role",
-				AuthMethodEnv: "k8s",
+				roleEnv:       "test-app-role",
+				authMethodEnv: "k8s",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_PATH missing"),
 		},
 		{
 			name: "Invalid login configuration using role/path - missing auth method",
 			env: map[string]string{
-				RoleEnv: "test-app-role",
-				PathEnv: "auth/approle/test/login",
+				roleEnv: "test-app-role",
+				pathEnv: "auth/approle/test/login",
 			},
 			err: fmt.Errorf("incomplete authentication configuration: VAULT_AUTH_METHOD missing"),
 		},

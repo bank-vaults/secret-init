@@ -32,13 +32,37 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider/vault"
 )
 
-var supportedProviders = []string{
-	file.ProviderName,
-	vault.ProviderName,
-	bao.ProviderName,
-	aws.ProviderName,
-	gcp.ProviderName,
-	azure.ProviderName,
+var factories = []provider.Factory{
+	{
+		ProviderType: file.ProviderType,
+		Validator:    file.Valid,
+		Create:       file.NewProvider,
+	},
+	{
+		ProviderType: vault.ProviderType,
+		Validator:    vault.Valid,
+		Create:       vault.NewProvider,
+	},
+	{
+		ProviderType: bao.ProviderType,
+		Validator:    bao.Valid,
+		Create:       bao.NewProvider,
+	},
+	{
+		ProviderType: aws.ProviderType,
+		Validator:    aws.Valid,
+		Create:       aws.NewProvider,
+	},
+	{
+		ProviderType: gcp.ProviderType,
+		Validator:    gcp.Valid,
+		Create:       gcp.NewProvider,
+	},
+	{
+		ProviderType: azure.ProviderType,
+		Validator:    azure.Valid,
+		Create:       azure.NewProvider,
+	},
 }
 
 // EnvStore is a helper for managing interactions between environment variables and providers,
@@ -66,28 +90,11 @@ func NewEnvStore(appConfig *common.Config) *EnvStore {
 // GetSecretReferences returns a map of secret key=value pairs for each provider
 func (s *EnvStore) GetSecretReferences() map[string][]string {
 	secretReferences := make(map[string][]string)
-
 	for envKey, envPath := range s.data {
-		providerName, envSecretReference := getProviderPath(envPath)
-		envSecretReference = envKey + "=" + envSecretReference
-		switch providerName {
-		case file.ProviderName:
-			secretReferences[file.ProviderName] = append(secretReferences[file.ProviderName], envSecretReference)
-
-		case vault.ProviderName:
-			secretReferences[vault.ProviderName] = append(secretReferences[vault.ProviderName], envSecretReference)
-
-		case bao.ProviderName:
-			secretReferences[bao.ProviderName] = append(secretReferences[bao.ProviderName], envSecretReference)
-
-		case aws.ProviderName:
-			secretReferences[aws.ProviderName] = append(secretReferences[aws.ProviderName], envSecretReference)
-
-		case gcp.ProviderName:
-			secretReferences[gcp.ProviderName] = append(secretReferences[gcp.ProviderName], envSecretReference)
-
-		case azure.ProviderName:
-			secretReferences[azure.ProviderName] = append(secretReferences[azure.ProviderName], envSecretReference)
+		for _, factory := range factories {
+			if factory.Validator(envPath) {
+				secretReferences[factory.ProviderType] = append(secretReferences[factory.ProviderType], fmt.Sprintf("%s=%s", envKey, envPath))
+			}
 		}
 	}
 
@@ -98,56 +105,52 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 // It then asynchronously loads secrets using each provider and it's corresponding paths.
 // The secrets from each provider are then placed into a single slice.
 func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[string][]string) ([]provider.Secret, error) {
-	// At most, we will have one error per provider
-	errCh := make(chan error, len(supportedProviders))
 	var providerSecrets []provider.Secret
-
 	// Workaround for openBao
 	// Remove once openBao uses BAO_ADDR in their client, instead of VAULT_ADDR
-	vaultPaths, ok := providerPaths[vault.ProviderName]
-	if ok {
-		var err error
-		providerSecrets, err = s.workaroundForBao(ctx, vaultPaths)
+	if _, ok := providerPaths[vault.ProviderType]; ok {
+		vaultSecrets, err := s.workaroundForBao(ctx, providerPaths[vault.ProviderType])
 		if err != nil {
-			return nil, fmt.Errorf("failed to workaround for bao: %w", err)
+			return nil, err
 		}
 
-		// Remove the vault paths since they have been processed
-		delete(providerPaths, vault.ProviderName)
+		providerSecrets = append(providerSecrets, vaultSecrets...)
+		delete(providerPaths, vault.ProviderType)
 	}
 
+	// At most, we will have one error per provider
+	errCh := make(chan error, len(factories))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-
 	for providerName, paths := range providerPaths {
 		wg.Add(1)
-
 		go func(providerName string, paths []string, errCh chan<- error) {
 			defer wg.Done()
 
-			provider, err := newProvider(ctx, providerName, s.appConfig)
-			if err != nil {
-				errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
-				return
-			}
+			for _, factory := range factories {
+				if factory.ProviderType == providerName {
+					provider, err := factory.Create(ctx, s.appConfig)
+					if err != nil {
+						errCh <- fmt.Errorf("failed to create provider %s: %w", providerName, err)
+						return
+					}
 
-			secrets, err := provider.LoadSecrets(ctx, paths)
-			if err != nil {
-				errCh <- fmt.Errorf("failed to load secrets for provider %s: %w", providerName, err)
-				return
-			}
+					secrets, err := provider.LoadSecrets(ctx, paths)
+					if err != nil {
+						errCh <- fmt.Errorf("failed to load secrets for provider %s: %w", providerName, err)
+						return
+					}
 
-			mu.Lock()
-			providerSecrets = append(providerSecrets, secrets...)
-			mu.Unlock()
+					mu.Lock()
+					providerSecrets = append(providerSecrets, secrets...)
+					mu.Unlock()
+				}
+			}
 		}(providerName, paths, errCh)
 	}
-
-	// Wait for all providers to finish
 	wg.Wait()
 	close(errCh)
 
-	// Check for errors
 	var errs error
 	for e := range errCh {
 		if e != nil {
@@ -163,19 +166,25 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 
 // Workaround for openBao, essentially loading secretes from Vault first.
 func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([]provider.Secret, error) {
-	var secrets []provider.Secret
+	var providerSecrets []provider.Secret
+	for _, factory := range factories {
+		if factory.ProviderType == vault.ProviderType {
+			provider, err := factory.Create(ctx, s.appConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create provider %s: %w", factory.ProviderType, err)
+			}
 
-	provider, err := newProvider(ctx, vault.ProviderName, s.appConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create provider %s: %w", vault.ProviderName, err)
+			secrets, err := provider.LoadSecrets(ctx, vaultPaths)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load secrets for provider %s: %w", factory.ProviderType, err)
+			}
+
+			providerSecrets = append(providerSecrets, secrets...)
+			break
+		}
 	}
 
-	secrets, err = provider.LoadSecrets(ctx, vaultPaths)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load secrets for provider %s: %w", vault.ProviderName, err)
-	}
-
-	return secrets, nil
+	return providerSecrets, nil
 }
 
 // ConvertProviderSecrets converts the loaded secrets to environment variables
@@ -187,112 +196,4 @@ func (s *EnvStore) ConvertProviderSecrets(providerSecrets []provider.Secret) []s
 	}
 
 	return secretsEnv
-}
-
-// Returns the detected provider name and path with removed prefix
-func getProviderPath(path string) (string, string) {
-	if strings.HasPrefix(path, "file:") {
-		return file.ProviderName, path
-	}
-
-	// If the path contains some string formatted as "vault:{STR}#{STR}"
-	// it is most probably a vault path
-	if vault.ProviderEnvRegex.MatchString(path) {
-		return vault.ProviderName, path
-	}
-
-	// If the path contains some string formatted as "bao:{STR}#{STR}"
-	// it is most probably a vault path
-	if bao.ProviderEnvRegex.MatchString(path) {
-		return bao.ProviderName, path
-	}
-
-	// Example AWS prefixes:
-	// arn:aws:secretsmanager:us-west-2:123456789012:secret:my-secret
-	// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
-	if strings.HasPrefix(path, "arn:aws:secretsmanager:") || strings.HasPrefix(path, "arn:aws:ssm:") {
-		return aws.ProviderName, path
-	}
-
-	// Example GCP prefixes:
-	// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}
-	// gcp:secretmanager:projects/{PROJECT_ID}/secrets/{SECRET_NAME}/versions/{VERSION|latest}
-	if strings.HasPrefix(path, "gcp:secretmanager:") {
-		return gcp.ProviderName, path
-	}
-
-	// Example Azure Key Vault secret examples:
-	// azure:keyvault:{SECRET_NAME}
-	// azure:keyvault:{SECRET_NAME}/{VERSION}
-	if strings.HasPrefix(path, "azure:keyvault:") {
-		return azure.ProviderName, path
-	}
-
-	return "", path
-}
-
-func newProvider(ctx context.Context, providerName string, appConfig *common.Config) (provider.Provider, error) {
-	switch providerName {
-	case file.ProviderName:
-		config := file.LoadConfig()
-		provider, err := file.NewProvider(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create file provider: %w", err)
-		}
-		return provider, nil
-
-	case vault.ProviderName:
-		config, err := vault.LoadConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create vault config: %w", err)
-		}
-
-		provider, err := vault.NewProvider(config, appConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create vault provider: %w", err)
-		}
-		return provider, nil
-
-	case bao.ProviderName:
-		config, err := bao.LoadConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bao config: %w", err)
-		}
-
-		provider, err := bao.NewProvider(config, appConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bao provider: %w", err)
-		}
-		return provider, nil
-
-	case aws.ProviderName:
-		config, err := aws.LoadConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create aws config: %w", err)
-		}
-
-		provider := aws.NewProvider(config)
-		return provider, nil
-
-	case gcp.ProviderName:
-		provider, err := gcp.NewProvider(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gcp provider: %w", err)
-		}
-		return provider, nil
-
-	case azure.ProviderName:
-		config, err := azure.LoadConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create azure config: %w", err)
-		}
-		provider, err := azure.NewProvider(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create azure provider: %w", err)
-		}
-		return provider, nil
-
-	default:
-		return nil, fmt.Errorf("provider %s is not supported", providerName)
-	}
 }

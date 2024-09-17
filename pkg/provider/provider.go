@@ -14,10 +14,21 @@
 
 package provider
 
-import "context"
+import (
+	"context"
+
+	"github.com/bank-vaults/secret-init/pkg/common"
+)
+
+type Factory struct {
+	ProviderType string
+	Validator    func(envValue string) bool
+	Create       func(ctx context.Context, cfg *common.Config) (Provider, error)
+}
 
 // Provider is an interface for securely loading secrets based on environment variables.
 type Provider interface {
+	// LoadSecrets loads secrets from the provider based on the given paths
 	LoadSecrets(ctx context.Context, paths []string) ([]Secret, error)
 }
 

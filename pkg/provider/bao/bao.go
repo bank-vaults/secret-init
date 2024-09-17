@@ -30,9 +30,9 @@ import (
 	"github.com/bank-vaults/secret-init/pkg/provider"
 )
 
-var (
-	ProviderName     = "bao"
-	ProviderEnvRegex = regexp.MustCompile(`(bao:)(.*)#(.*)`)
+const (
+	ProviderType      = "bao"
+	referenceSelector = `(bao:)(.*)#(.*)`
 )
 
 type Provider struct {
@@ -66,7 +66,12 @@ func (s *sanitized) append(key string, value string) {
 	}
 }
 
-func NewProvider(config *Config, appConfig *common.Config) (*Provider, error) {
+func NewProvider(_ context.Context, appConfig *common.Config) (provider.Provider, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vault config: %w", err)
+	}
+
 	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()})}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, bao.ClientToken(config.Token))
@@ -118,7 +123,7 @@ func NewProvider(config *Config, appConfig *common.Config) (*Provider, error) {
 // and the value is the secret value
 // E.g. paths: MYSQL_PASSWORD=secret/data/mysql/password
 // returns: []provider.Secret{provider.Secret{Path: "MYSQL_PASSWORD", Value: "password"}}
-func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Secret, error) {
+func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
 	sanitized := sanitized{login: p.isLogin}
 	baoEnviron := parsePathsToMap(paths)
 
@@ -141,7 +146,7 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 
 	if p.revokeToken {
 		// ref: https://www.vaultproject.io/api/auth/token/index.html#revoke-a-token-self-
-		err := p.client.RawClient().Auth().Token().RevokeSelf(p.client.RawClient().Token())
+		err := p.client.RawClient().Auth().Token().RevokeSelfWithContext(ctx, p.client.RawClient().Token())
 		if err != nil {
 			// Do not exit on error, token revoking can be denied by policy
 			slog.Warn("failed to revoke token")
@@ -151,6 +156,12 @@ func (p *Provider) LoadSecrets(_ context.Context, paths []string) ([]provider.Se
 	}
 
 	return sanitized.secrets, nil
+}
+
+// If the path contains some string formatted as "bao:{STR}#{STR}"
+// it is most probably a vault path
+func Valid(envValue string) bool {
+	return regexp.MustCompile(referenceSelector).MatchString(envValue)
 }
 
 func parsePathsToMap(paths []string) map[string]string {
