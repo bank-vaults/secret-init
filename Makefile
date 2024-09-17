@@ -83,7 +83,7 @@ license-check: ## Run license check
 ##@ Dependencies
 
 # Dependency versions
-GOLANGCI_LINT_VERSION = 1.60.2
+GOLANGCI_LINT_VERSION = 1.61.0
 LICENSEI_VERSION = 0.9.0
 COSIGN_VERSION = 2.4.0
 GORELEASER_VERSION = 2.2.0
