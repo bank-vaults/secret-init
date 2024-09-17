@@ -58,7 +58,7 @@ const (
 	passthroughEnv          = "VAULT_PASSTHROUGH"
 	logLevelEnv             = "VAULT_LOG_LEVEL"
 	revokeTokenEnv          = "VAULT_REVOKE_TOKEN"
-	fromPathEnv             = "VAULT_FROM_PATH"
+	FromPathEnv             = "VAULT_FROM_PATH"
 )
 
 type Config struct {
@@ -110,7 +110,7 @@ var sanitizeEnvmap = map[string]envType{
 	passthroughEnv:          {login: false},
 	logLevelEnv:             {login: false},
 	revokeTokenEnv:          {login: false},
-	fromPathEnv:             {login: false},
+	FromPathEnv:             {login: false},
 }
 
 func LoadConfig() (*Config, error) {
@@ -176,7 +176,7 @@ func LoadConfig() (*Config, error) {
 		TransitPath:          os.Getenv(transitPathEnv),
 		TransitBatchSize:     cast.ToInt(os.Getenv(transitBatchSizeEnv)),
 		IgnoreMissingSecrets: cast.ToBool(os.Getenv(ignoreMissingSecretsEnv)), // Used both for reading secrets and transit encryption
-		FromPath:             os.Getenv(fromPathEnv),
+		FromPath:             os.Getenv(FromPathEnv),
 		RevokeToken:          cast.ToBool(os.Getenv(revokeTokenEnv)),
 	}, nil
 }

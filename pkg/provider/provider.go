@@ -30,8 +30,6 @@ type Factory struct {
 type Provider interface {
 	// LoadSecrets loads secrets from the provider based on the given paths
 	LoadSecrets(ctx context.Context, paths []string) ([]Secret, error)
-	// Valid returns whether a env value can be handled by the provider
-	Valid(envValue string) bool
 }
 
 // Secret holds Provider-specific secret data.

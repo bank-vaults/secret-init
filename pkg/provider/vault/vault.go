@@ -118,11 +118,6 @@ func NewProvider(_ context.Context, appConfig *common.Config) (provider.Provider
 	}, nil
 }
 
-// GetName returns the name of the provider
-func (p *Provider) GetName() string {
-	return providerName
-}
-
 // LoadSecret's path formatting: <key>=<path>
 // This formatting is necessary because the injector expects a map of key=value pairs.
 // It also returns a map of key:value pairs, where the key is the environment variable name
@@ -131,20 +126,18 @@ func (p *Provider) GetName() string {
 // returns: []provider.Secret{provider.Secret{Path: "MYSQL_PASSWORD", Value: "password"}}
 func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
 	sanitized := sanitized{login: p.isLogin}
-	vaultEnviron := parsePathsToMap(paths)
-
 	secretInjector := injector.NewSecretInjector(p.injectorConfig, p.client, p.secretRenewer, slog.Default())
 	inject := func(key, value string) {
-		// Check deduplication
+		// Check for key duplication
 		if utils.IsKeyDuplicated(&sanitized.secrets, key) {
-			slog.Warn(fmt.Sprintf("Deduplication detected for key: %s, overriding it", key))
-			utils.RemoveSecretByKey(&sanitized.secrets, key)
+			slog.Warn(fmt.Sprintf("Duplication detected for key: %s, skipping it", key))
+			return
 		}
 
 		sanitized.append(key, value)
 	}
 
-	err := secretInjector.InjectSecretsFromVault(vaultEnviron, inject)
+	err := secretInjector.InjectSecretsFromVault(parsePathsToMap(paths), inject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inject secrets from vault: %w", err)
 	}
@@ -157,7 +150,7 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 	}
 
 	if p.revokeToken {
-		// ref: https://www.vaultproject.io/api/auth/token/index.html#revoke-a-token-self-
+		// ref: https://www.vaultproject.io/api/auth/token/index.html#revoke-a-token-self
 		err := p.client.RawClient().Auth().Token().RevokeSelfWithContext(ctx, p.client.RawClient().Token())
 		if err != nil {
 			// Do not exit on error, token revoking can be denied by policy

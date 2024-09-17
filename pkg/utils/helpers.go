@@ -16,8 +16,12 @@ package utils
 
 import "github.com/bank-vaults/secret-init/pkg/provider"
 
-// Function to check if a key is duplicated in the secrets slice
+// Checks whether a key is duplicated in the secrets slice
 func IsKeyDuplicated(secrets *[]provider.Secret, searchKey string) bool {
+	if secrets == nil {
+		return false
+	}
+
 	for _, secret := range *secrets {
 		if secret.Key == searchKey {
 			return true
@@ -25,14 +29,4 @@ func IsKeyDuplicated(secrets *[]provider.Secret, searchKey string) bool {
 	}
 
 	return false
-}
-
-// Function to remove a secret by key using a pointer to the slice
-func RemoveSecretByKey(secrets *[]provider.Secret, key string) {
-	for i, secret := range *secrets {
-		if secret.Key == key {
-			*secrets = append((*secrets)[:i], (*secrets)[i+1:]...)
-			return
-		}
-	}
 }

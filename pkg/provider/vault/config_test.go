@@ -43,7 +43,7 @@ func TestConfig(t *testing.T) {
 				transitBatchSizeEnv:     "10",
 				ignoreMissingSecretsEnv: "true",
 				revokeTokenEnv:          "true",
-				fromPathEnv:             "secret/data/test",
+				FromPathEnv:             "secret/data/test",
 			},
 			wantConfig: &Config{
 				IsLogin:              true,

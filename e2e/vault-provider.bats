@@ -157,7 +157,7 @@ assert_output_contains() {
 
   run_output=$(./secret-init env | grep 'MYSQL_PASSWORD\|AWS_SECRET_ACCESS_KEY\|AWS_ACCESS_KEY_ID')
   assert_success
-  
+
   # Get the lease duration after renewal
   secret_info_after=$(docker exec "$vault_container_name" vault read -format=json database/creds/my-role)
   lease_id_after=$(echo "$secret_info_after" | jq -r '.lease_id')
@@ -173,12 +173,13 @@ assert_output_contains() {
 }
 
 @test "secrets successfully loaded from vault using VAULT_FROM_PATH" {
+  setup_vault_provider
+
   # unset env vars to ensure secret-init will utilize VAULT_FROM_PATH
   unset MYSQL_PASSWORD
   unset AWS_SECRET_ACCESS_KEY
   unset AWS_ACCESS_KEY_ID
 
-  setup_vault_provider
   set_vault_token 227e1cce-6bf7-30bb-2d2a-acc854318caf
   add_secrets_to_vault
   export VAULT_FROM_PATH="secret/data/test/mysql,secret/data/test/aws"
