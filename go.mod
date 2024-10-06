@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/bank-vaults/vault-sdk v0.10.1
 	github.com/hashicorp/vault/api v1.15.0
-	github.com/samber/slog-multi v1.2.2
+	github.com/samber/slog-multi v1.2.3
 	github.com/samber/slog-syslog v1.0.0
 	github.com/spf13/cast v1.7.0
 	github.com/stretchr/testify v1.9.0
