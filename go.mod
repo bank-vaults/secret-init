@@ -12,7 +12,7 @@ require (
 	github.com/samber/slog-multi v1.2.4
 	github.com/samber/slog-syslog v1.0.0
 	github.com/spf13/cast v1.7.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
