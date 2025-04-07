@@ -38,8 +38,12 @@ container-image: ## Build container image
 	docker build .
 
 .PHONY: binary-snapshot
-binary-snapshot: ## Build binary snapshot
+binary-snapshot: bin/goreleaser ## Build binary snapshot
 	VERSION=v${GORELEASER_VERSION} $(GORELEASER_BIN) release --clean --skip=publish --snapshot
+
+.PHONY: binary-release
+binary-release: bin/goreleaser ## Build binary release
+	VERSION=v${GORELEASER_VERSION} $(GORELEASER_BIN) release
 
 ##@ Checks
 
