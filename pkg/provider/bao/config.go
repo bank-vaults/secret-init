@@ -123,7 +123,9 @@ func LoadConfig() (*Config, error) {
 	// is not yet used directly by the Bao client.
 	// This is why env_store.go/workaroundForBao() has been implemented.
 	baoAddr := os.Getenv(addrEnv)
-	os.Setenv("VAULT_ADDR", baoAddr)
+	if err := os.Setenv("VAULT_ADDR", baoAddr); err != nil {
+		return nil, fmt.Errorf("failed to set VAULT_ADDR: %w", err)
+	}
 
 	// The login procedure takes the token from a file (if using Bao Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),

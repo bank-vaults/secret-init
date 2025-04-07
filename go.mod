@@ -1,6 +1,6 @@
 module github.com/bank-vaults/secret-init
 
-go 1.23.1
+go 1.24.1
 
 require (
 	cloud.google.com/go/secretmanager v1.14.3
@@ -141,5 +141,3 @@ require (
 	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-exclude google.golang.org/grpc v1.69.0

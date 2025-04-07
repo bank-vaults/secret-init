@@ -38,8 +38,12 @@ container-image: ## Build container image
 	docker build .
 
 .PHONY: binary-snapshot
-binary-snapshot: ## Build binary snapshot
+binary-snapshot: bin/goreleaser ## Build binary snapshot
 	VERSION=v${GORELEASER_VERSION} $(GORELEASER_BIN) release --clean --skip=publish --snapshot
+
+.PHONY: binary-release
+binary-release: bin/goreleaser ## Build binary release
+	VERSION=v${GORELEASER_VERSION} $(GORELEASER_BIN) release
 
 ##@ Checks
 
@@ -52,7 +56,7 @@ lint: ## Run linters
 
 .PHONY: lint-go
 lint-go:
-	$(GOLANGCI_LINT_BIN) run $(if ${CI},--out-format colored-line-number,)
+	$(GOLANGCI_LINT_BIN) run
 
 .PHONY: lint-docker
 lint-docker:
@@ -83,7 +87,7 @@ license-check: ## Run license check
 ##@ Dependencies
 
 # Dependency versions
-GOLANGCI_LINT_VERSION = 1.62.2
+GOLANGCI_LINT_VERSION = 2.0.2
 LICENSEI_VERSION = 0.9.0
 COSIGN_VERSION = 2.4.1
 GORELEASER_VERSION = 2.4.8

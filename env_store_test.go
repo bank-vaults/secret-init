@@ -176,7 +176,9 @@ func TestEnvStore_GetSecretReferences(t *testing.T) {
 		t.Run(ttp.name, func(t *testing.T) {
 			// prepare envs
 			for envKey, envVal := range ttp.envs {
-				os.Setenv(envKey, envVal)
+				if err := os.Setenv(envKey, envVal); err != nil {
+					t.Fatalf("Failed to set environment variable %s: %v", envKey, err)
+				}
 			}
 			t.Cleanup(func() {
 				os.Clearenv()
@@ -195,7 +197,11 @@ func TestEnvStore_GetSecretReferences(t *testing.T) {
 
 func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	secretFile := newSecretFile(t, "secretId")
-	defer os.Remove(secretFile)
+	defer func() {
+		if err := os.Remove(secretFile); err != nil {
+			t.Fatalf("Failed to remove secret file: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name                string
@@ -231,7 +237,9 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
+			if err := os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile); err != nil {
+				t.Fatalf("Failed to set environment variable: %v", err)
+			}
 
 			providerSecrets, err := NewEnvStore(&common.Config{}).LoadProviderSecrets(context.Background(), ttp.providerPaths)
 			if err != nil {
@@ -246,7 +254,11 @@ func TestEnvStore_LoadProviderSecrets(t *testing.T) {
 
 func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 	secretFile := newSecretFile(t, "secretId")
-	defer os.Remove(secretFile)
+	defer func() {
+		if err := os.Remove(secretFile); err != nil {
+			t.Fatalf("Failed to remove secret file: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name            string
@@ -271,7 +283,9 @@ func TestEnvStore_ConvertProviderSecrets(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile)
+			if err := os.Setenv("AWS_SECRET_ACCESS_KEY_ID", "file:"+secretFile); err != nil {
+				t.Fatalf("Failed to set environment variable: %v", err)
+			}
 
 			secretsEnv := NewEnvStore(&common.Config{}).ConvertProviderSecrets(ttp.providerSecrets)
 			if ttp.wantSecretsEnv != nil {
@@ -288,7 +302,11 @@ func newSecretFile(t *testing.T, content string) string {
 
 	file, err := os.CreateTemp(dir, "secret.txt")
 	assert.Nil(t, err, "Failed to create a temporary file")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Fatalf("Failed to close temporary file: %v", err)
+		}
+	}()
 
 	_, err = file.WriteString(content)
 	assert.Nil(t, err, "Failed to write to the temporary file")
