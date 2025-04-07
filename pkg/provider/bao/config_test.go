@@ -24,7 +24,11 @@ import (
 
 func TestConfig(t *testing.T) {
 	tokenFile := newTokenFile(t)
-	defer os.Remove(tokenFile)
+	defer func() {
+		if err := os.Remove(tokenFile); err != nil {
+			t.Fatalf("Failed to remove token file: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name       string
@@ -110,7 +114,9 @@ func TestConfig(t *testing.T) {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
 			for envKey, envVal := range ttp.env {
-				os.Setenv(envKey, envVal)
+				if err := os.Setenv(envKey, envVal); err != nil {
+					t.Fatalf("Failed to set environment variable %s: %v", envKey, err)
+				}
 			}
 			t.Cleanup(func() {
 				os.Clearenv()
@@ -131,7 +137,11 @@ func TestConfig(t *testing.T) {
 func newTokenFile(t *testing.T) string {
 	tokenFile, err := os.CreateTemp("", "bao-token")
 	assert.Nil(t, err, "Failed to create a temporary token file")
-	defer tokenFile.Close()
+	defer func() {
+		if err := tokenFile.Close(); err != nil {
+			t.Fatalf("Failed to close temporary token file: %v", err)
+		}
+	}()
 
 	_, err = tokenFile.Write([]byte("root"))
 	assert.Nil(t, err, "Failed to write to a temporary token file")

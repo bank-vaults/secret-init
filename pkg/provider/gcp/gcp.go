@@ -53,7 +53,11 @@ func NewProvider(ctx context.Context, _ *common.Config) (provider.Provider, erro
 }
 
 func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.Secret, error) {
-	defer p.client.Close()
+	defer func() {
+		if err := p.client.Close(); err != nil {
+			fmt.Printf("Failed to close secret manager client: %v", err)
+		}
+	}()
 
 	var secrets []provider.Secret
 
