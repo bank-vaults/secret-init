@@ -23,7 +23,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /usr/local/bin/secret-init .
+RUN go build -ldflags "-s -w" -o /usr/local/bin/secret-init .
 RUN xx-verify /usr/local/bin/secret-init
 
 
