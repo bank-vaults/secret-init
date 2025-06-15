@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	cloud.google.com/go/secretmanager v1.14.3
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.3.1
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/bank-vaults/vault-sdk v0.10.2
