@@ -39,6 +39,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "Valid login configuration with Token",
 			env: map[string]string{
+				addrEnv:                 "http://127.0.0.1:8200",
 				tokenEnv:                vaultLogin,
 				tokenFileEnv:            tokenFile,
 				passthroughEnv:          agentAddrEnv + ", " + cliNoColorEnv,
@@ -51,6 +52,7 @@ func TestConfig(t *testing.T) {
 			},
 			wantConfig: &Config{
 				IsLogin:              true,
+				Addr:                 "http://127.0.0.1:8200",
 				Token:                "root",
 				TokenFile:            tokenFile,
 				TransitKeyID:         "test-key",

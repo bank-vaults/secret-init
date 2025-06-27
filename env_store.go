@@ -107,20 +107,7 @@ func (s *EnvStore) GetSecretReferences() map[string][]string {
 // The secrets from each provider are then placed into a single slice.
 func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[string][]string) ([]provider.Secret, error) {
 	var providerSecrets []provider.Secret
-	// Workaround for openBao
-	// Remove once openBao uses BAO_ADDR in their client, instead of VAULT_ADDR
-	if _, ok := providerPaths[vault.ProviderType]; ok {
-		vaultSecrets, err := s.workaroundForBao(ctx, providerPaths[vault.ProviderType])
-		if err != nil {
-			return nil, err
-		}
-
-		providerSecrets = append(providerSecrets, vaultSecrets...)
-		delete(providerPaths, vault.ProviderType)
-	}
-
-	// At most, we will have one error per provider
-	errCh := make(chan error, len(factories))
+	errCh := make(chan error, len(factories)) // At most, we will have one error per provider
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	for providerName, paths := range providerPaths {
@@ -160,29 +147,6 @@ func (s *EnvStore) LoadProviderSecrets(ctx context.Context, providerPaths map[st
 	}
 	if errs != nil {
 		return nil, errs
-	}
-
-	return providerSecrets, nil
-}
-
-// Workaround for openBao, essentially loading secretes from Vault first.
-func (s *EnvStore) workaroundForBao(ctx context.Context, vaultPaths []string) ([]provider.Secret, error) {
-	var providerSecrets []provider.Secret
-	for _, factory := range factories {
-		if factory.ProviderType == vault.ProviderType {
-			provider, err := factory.Create(ctx, s.appConfig)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create provider %s: %w", factory.ProviderType, err)
-			}
-
-			secrets, err := provider.LoadSecrets(ctx, vaultPaths)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load secrets for provider %s: %w", factory.ProviderType, err)
-			}
-
-			providerSecrets = append(providerSecrets, secrets...)
-			break
-		}
 	}
 
 	return providerSecrets, nil
