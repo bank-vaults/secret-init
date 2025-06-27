@@ -73,7 +73,7 @@ func NewProvider(_ context.Context, appConfig *common.Config) (provider.Provider
 		return nil, fmt.Errorf("failed to create vault config: %w", err)
 	}
 
-	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()})}
+	clientOptions := []vault.ClientOption{vault.ClientLogger(clientLogger{slog.Default()}), vault.ClientURL(config.Addr)}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, vault.ClientToken(config.Token))
 	} else {

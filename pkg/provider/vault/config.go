@@ -63,6 +63,7 @@ const (
 
 type Config struct {
 	IsLogin              bool   `json:"is_login"`
+	Addr                 string `json:"addr"`
 	Token                string `json:"token"`
 	TokenFile            string `json:"token_file"`
 	Role                 string `json:"role"`
@@ -167,6 +168,7 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		IsLogin:              isLogin,
+		Addr:                 os.Getenv(addrEnv),
 		Token:                vaultToken,
 		TokenFile:            tokenFile,
 		Role:                 role,

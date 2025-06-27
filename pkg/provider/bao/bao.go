@@ -73,7 +73,7 @@ func NewProvider(_ context.Context, appConfig *common.Config) (provider.Provider
 		return nil, fmt.Errorf("failed to create vault config: %w", err)
 	}
 
-	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()})}
+	clientOptions := []bao.ClientOption{bao.ClientLogger(clientLogger{slog.Default()}), bao.ClientURL(config.Addr)}
 	if config.TokenFile != "" {
 		clientOptions = append(clientOptions, bao.ClientToken(config.Token))
 	} else {

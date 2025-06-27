@@ -63,6 +63,7 @@ const (
 
 type Config struct {
 	IsLogin              bool   `json:"is_login"`
+	Addr                 string `json:"addr"`
 	Token                string `json:"token"`
 	TokenFile            string `json:"token_file"`
 	Role                 string `json:"role"`
@@ -119,14 +120,6 @@ func LoadConfig() (*Config, error) {
 		hasRole, hasPath, hasAuthMethod bool
 	)
 
-	// This workaround is necessary because the BAO_ADDR
-	// is not yet used directly by the Bao client.
-	// This is why env_store.go/workaroundForBao() has been implemented.
-	baoAddr := os.Getenv(addrEnv)
-	if err := os.Setenv("VAULT_ADDR", baoAddr); err != nil {
-		return nil, fmt.Errorf("failed to set VAULT_ADDR: %w", err)
-	}
-
 	// The login procedure takes the token from a file (if using Bao Agent)
 	// or requests one for itself (Kubernetes Auth, or GCP, etc...),
 	// so if we got a BAO_TOKEN for the special value with "bao:login"
@@ -175,6 +168,7 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		IsLogin:              isLogin,
+		Addr:                 os.Getenv(addrEnv),
 		Token:                baoToken,
 		TokenFile:            tokenFile,
 		Role:                 role,
