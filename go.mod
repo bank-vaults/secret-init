@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/secretmanager v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
-	github.com/aws/aws-sdk-go v1.55.7
+	github.com/aws/aws-sdk-go v1.55.8
 	github.com/bank-vaults/vault-sdk v0.11.1
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/samber/slog-multi v1.4.1
