@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 
 	"github.com/bank-vaults/secret-init/pkg/common"
 	"github.com/bank-vaults/secret-init/pkg/provider"
@@ -35,19 +35,19 @@ const (
 )
 
 type Provider struct {
-	sm  *secretsmanager.SecretsManager
-	ssm *ssm.SSM
+	sm  *secretsmanager.Client
+	ssm *ssm.Client
 }
 
-func NewProvider(_ context.Context, _ *common.Config) (provider.Provider, error) {
-	config, err := LoadConfig()
+func NewProvider(ctx context.Context, _ *common.Config) (provider.Provider, error) {
+	config, err := LoadConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vault config: %w", err)
 	}
 
 	return &Provider{
-		sm:  secretsmanager.New(config.session),
-		ssm: ssm.New(config.session),
+		sm:  secretsmanager.NewFromConfig(config.config),
+		ssm: ssm.NewFromConfig(config.config),
 	}, nil
 }
 
@@ -62,11 +62,9 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 		// arn:aws:secretsmanager:region:account-id:secret:secret-name
 		// secretsmanager:secret-name
 		if strings.Contains(secretID, "secretsmanager:") {
-			secret, err := p.sm.GetSecretValueWithContext(
-				ctx,
-				&secretsmanager.GetSecretValueInput{
-					SecretId: aws.String(secretID),
-				})
+			secret, err := p.sm.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+				SecretId: aws.String(secretID),
+			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to get secret from AWS secrets manager: %w", err)
 			}
@@ -91,19 +89,17 @@ func (p *Provider) LoadSecrets(ctx context.Context, paths []string) ([]provider.
 		// arn:aws:ssm:region:account-id:parameter/path/to/parameter-name
 		// arn:aws:ssm:us-west-2:123456789012:parameter/my-parameter
 		if strings.Contains(secretID, "ssm:") {
-			parameteredSecret, err := p.ssm.GetParameterWithContext(
-				ctx,
-				&ssm.GetParameterInput{
-					Name:           aws.String(secretID),
-					WithDecryption: aws.Bool(true),
-				})
+			parameteredSecret, err := p.ssm.GetParameter(ctx, &ssm.GetParameterInput{
+				Name:           aws.String(secretID),
+				WithDecryption: aws.Bool(true),
+			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to get secret from AWS SSM: %w", err)
 			}
 
 			secrets = append(secrets, provider.Secret{
 				Key:   originalKey,
-				Value: aws.StringValue(parameteredSecret.Parameter.Value),
+				Value: aws.ToString(parameteredSecret.Parameter.Value),
 			})
 		}
 	}
@@ -127,7 +123,7 @@ func Valid(envValue string) bool {
 func extractSecretValueFromSM(secret *secretsmanager.GetSecretValueOutput) ([]byte, error) {
 	// Secret available as string
 	if secret.SecretString != nil {
-		return []byte(aws.StringValue(secret.SecretString)), nil
+		return []byte(aws.ToString(secret.SecretString)), nil
 	}
 
 	// Secret available as binary

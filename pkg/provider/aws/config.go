@@ -15,61 +15,44 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/spf13/cast"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 const (
-	LoadFromSharedConfigEnv = "AWS_LOAD_FROM_SHARED_CONFIG"
-	DefaultRegionEnv        = "AWS_DEFAULT_REGION"
-	RegionEnv               = "AWS_REGION"
+	DefaultRegionEnv = "AWS_DEFAULT_REGION"
+	RegionEnv        = "AWS_REGION"
 )
 
 type Config struct {
-	session *session.Session
+	config aws.Config
 }
 
-func LoadConfig() (*Config, error) {
-	// Loading session data from shared config is disabled by default and needs to be
-	// explicitly enabled via AWS_LOAD_FROM_SHARED_CONFIG
-	options := session.Options{
-		SharedConfigState: session.SharedConfigDisable,
-	}
-
-	// Override session options from env configs
-	if cast.ToBool(os.Getenv(LoadFromSharedConfigEnv)) {
-		options.SharedConfigState = session.SharedConfigEnable
-	}
-
-	if region := getRegionEnv(); region != nil {
-		options.Config = aws.Config{Region: region}
-	}
-
-	// Create session
-	sess, err := session.NewSessionWithOptions(options)
+func LoadConfig(ctx context.Context) (*Config, error) {
+	config, err := config.LoadDefaultConfig(ctx, config.WithRegion(getRegionEnv()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+		return nil, fmt.Errorf("failed to create AWS config: %w", err)
 	}
 
-	return &Config{session: sess}, nil
+	return &Config{config: config}, nil
 }
 
-func getRegionEnv() *string {
+func getRegionEnv() string {
 	region, hasRegion := os.LookupEnv(RegionEnv)
 	if hasRegion {
-		return aws.String(region)
+		return region
 	}
 
 	defaultRegion, hasDefaultRegion := os.LookupEnv(DefaultRegionEnv)
 	if hasDefaultRegion {
-		return aws.String(defaultRegion)
+		return defaultRegion
 	}
 
-	// Return nil if no region is found, allowing the AWS SDK to attempt to
+	// Return an empty string if no region is found, allowing the AWS SDK to attempt to
 	// determine the region from the shared config or environment variables.
-	return nil
+	return ""
 }
