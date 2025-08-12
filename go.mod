@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.38.0
 	github.com/aws/aws-sdk-go-v2/config v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.37.0
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.61.1
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.63.0
 	github.com/bank-vaults/vault-sdk v0.11.1
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/samber/slog-multi v1.4.1
