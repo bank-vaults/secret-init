@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/secretmanager v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.12.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
-	github.com/aws/aws-sdk-go-v2 v1.39.0
+	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.8
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.4
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.64.4
