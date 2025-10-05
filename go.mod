@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.6
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.65.1
 	github.com/bank-vaults/vault-sdk v0.11.1
-	github.com/hashicorp/vault/api v1.21.0
+	github.com/hashicorp/vault/api v1.22.0
 	github.com/samber/slog-multi v1.5.0
 	github.com/samber/slog-syslog v1.0.0
 	github.com/spf13/cast v1.10.0
