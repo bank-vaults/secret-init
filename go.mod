@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	cloud.google.com/go/secretmanager v1.20.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
@@ -31,7 +31,7 @@ require (
 	cloud.google.com/go/storage v1.62.2 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	emperror.dev/errors v0.8.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.7.0 // indirect
